@@ -1,0 +1,33 @@
+{
+  "additionalProperties": false,
+  "description": "Registros agregados: válidos por item, vazios e invalidos.",
+  "properties": {
+    "itens": {
+      "description": "Registros válidos por item, na ordem 1..N.",
+      "items": {
+        "minimum": 0,
+        "type": "integer"
+      },
+      "minItems": 1,
+      "title": "Itens",
+      "type": "array"
+    },
+    "vazios": {
+      "minimum": 0,
+      "title": "Vazios",
+      "type": "integer"
+    },
+    "invalidos": {
+      "minimum": 0,
+      "title": "Invalidos",
+      "type": "integer"
+    }
+  },
+  "required": [
+    "itens",
+    "vazios",
+    "invalidos"
+  ],
+  "title": "Contagens",
+  "type": "object"
+}

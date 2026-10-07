@@ -1,0 +1,50 @@
+{
+  "additionalProperties": false,
+  "description": "ACK ou NACK da central para um manifesto ou pacote.",
+  "properties": {
+    "versao": {
+      "const": "1.0",
+      "title": "Versao",
+      "type": "string"
+    },
+    "tipo": {
+      "enum": [
+        "ACK",
+        "NACK"
+      ],
+      "title": "Tipo",
+      "type": "string"
+    },
+    "referencia": {
+      "description": "id do pacote, ou hash_extrato do manifesto.",
+      "title": "Referencia",
+      "type": "string"
+    },
+    "duplicado": {
+      "default": false,
+      "description": "ACK de algo já contabilizado; nada foi somado de novo.",
+      "title": "Duplicado",
+      "type": "boolean"
+    },
+    "motivo": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "description": "Motivo do NACK.",
+      "title": "Motivo"
+    }
+  },
+  "required": [
+    "versao",
+    "tipo",
+    "referencia"
+  ],
+  "title": "Resposta",
+  "type": "object"
+}

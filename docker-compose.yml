@@ -1,0 +1,81 @@
+# Nexo
+#
+# Dois sistemas realmente separados (coleta e consolidação), cada um com seu
+# PostgreSQL em rede própria, uma rede simulada entre eles e um painel que só
+# comanda e observa. Nenhum sistema enxerga o banco do outro.
+
+services:
+  coleta-db:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_DB: coleta
+      POSTGRES_USER: coleta
+      POSTGRES_PASSWORD: coleta
+    volumes:
+      - coleta-dados:/var/lib/postgresql/data
+    networks: [banco-coleta]
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U coleta -d coleta"]
+      interval: 2s
+      timeout: 3s
+      retries: 30
+
+  consolidacao-db:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_DB: consolidacao
+      POSTGRES_USER: consolidacao
+      POSTGRES_PASSWORD: consolidacao
+    volumes:
+      - consolidacao-dados:/var/lib/postgresql/data
+    networks: [banco-consolidacao]
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U consolidacao -d consolidacao"]
+      interval: 2s
+      timeout: 3s
+      retries: 30
+
+  coleta:
+    build: ./services/coleta
+    environment:
+      DATABASE_URL: postgresql+asyncpg://coleta:coleta@coleta-db:5432/coleta
+      TRANSPORTE_URL: http://transporte:8000
+    depends_on:
+      coleta-db:
+        condition: service_healthy
+    networks: [banco-coleta, unidades, controle]
+    ports: ["${COLETA_PORTA:-8091}:8000"]
+
+  transporte:
+    build: ./services/transporte
+    environment:
+      CONSOLIDACAO_URL: http://consolidacao:8000
+    networks: [unidades, central, controle]
+    ports: ["${TRANSPORTE_PORTA:-8092}:8000"]
+
+  consolidacao:
+    build: ./services/consolidacao
+    environment:
+      DATABASE_URL: postgresql+asyncpg://consolidacao:consolidacao@consolidacao-db:5432/consolidacao
+    depends_on:
+      consolidacao-db:
+        condition: service_healthy
+    networks: [banco-consolidacao, central, controle]
+    ports: ["${CONSOLIDACAO_PORTA:-8093}:8000"]
+
+  painel:
+    build: ./painel
+    depends_on: [coleta, transporte, consolidacao]
+    networks: [controle]
+    ports: ["${PAINEL_PORTA:-8090}:80"]
+
+networks:
+  banco-coleta: {}   # só coleta ⇄ seu banco
+  banco-consolidacao: {}  # só consolidação ⇄ seu banco
+  unidades: {}         # distribuidor das unidades ⇄ rede simulada
+  central: {}          # rede simulada ⇄ consolidação
+  controle: {}        # painel ⇄ os três serviços (comandos e eventos)
+
+volumes:
+  coleta-dados: {}
+  consolidacao-dados: {}

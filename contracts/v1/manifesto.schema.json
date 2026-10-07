@@ -1,0 +1,94 @@
+{
+  "$defs": {
+    "Contagens": {
+      "additionalProperties": false,
+      "description": "Registros agregados: válidos por item, vazios e invalidos.",
+      "properties": {
+        "itens": {
+          "description": "Registros válidos por item, na ordem 1..N.",
+          "items": {
+            "minimum": 0,
+            "type": "integer"
+          },
+          "minItems": 1,
+          "title": "Itens",
+          "type": "array"
+        },
+        "vazios": {
+          "minimum": 0,
+          "title": "Vazios",
+          "type": "integer"
+        },
+        "invalidos": {
+          "minimum": 0,
+          "title": "Invalidos",
+          "type": "integer"
+        }
+      },
+      "required": [
+        "itens",
+        "vazios",
+        "invalidos"
+      ],
+      "title": "Contagens",
+      "type": "object"
+    }
+  },
+  "additionalProperties": false,
+  "description": "Enviado antes dos pacotes: diz à central exatamente o que esperar da unidade.",
+  "properties": {
+    "versao": {
+      "const": "1.0",
+      "title": "Versao",
+      "type": "string"
+    },
+    "operacao_id": {
+      "maxLength": 64,
+      "minLength": 1,
+      "title": "Operacao Id",
+      "type": "string"
+    },
+    "unidade_id": {
+      "minimum": 1,
+      "title": "Unidade Id",
+      "type": "integer"
+    },
+    "total_pacotes": {
+      "minimum": 1,
+      "title": "Total Pacotes",
+      "type": "integer"
+    },
+    "total_registros": {
+      "minimum": 0,
+      "title": "Total Registros",
+      "type": "integer"
+    },
+    "totais": {
+      "$ref": "#/$defs/Contagens"
+    },
+    "hash_extrato": {
+      "description": "SHA-256 do extrato canônico (ver README).",
+      "pattern": "^[0-9a-f]{64}$",
+      "title": "Hash Extrato",
+      "type": "string"
+    },
+    "assinatura": {
+      "description": "HMAC-SHA256 da unidade sobre o SHA-256 do manifesto sem este campo.",
+      "pattern": "^[0-9a-f]{64}$",
+      "title": "Assinatura",
+      "type": "string"
+    }
+  },
+  "required": [
+    "versao",
+    "operacao_id",
+    "unidade_id",
+    "total_pacotes",
+    "total_registros",
+    "totais",
+    "hash_extrato",
+    "assinatura"
+  ],
+  "title": "Manifesto",
+  "type": "object"
+}

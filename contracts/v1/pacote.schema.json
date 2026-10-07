@@ -1,0 +1,102 @@
+{
+  "$defs": {
+    "Contagens": {
+      "additionalProperties": false,
+      "description": "Registros agregados: válidos por item, vazios e invalidos.",
+      "properties": {
+        "itens": {
+          "description": "Registros válidos por item, na ordem 1..N.",
+          "items": {
+            "minimum": 0,
+            "type": "integer"
+          },
+          "minItems": 1,
+          "title": "Itens",
+          "type": "array"
+        },
+        "vazios": {
+          "minimum": 0,
+          "title": "Vazios",
+          "type": "integer"
+        },
+        "invalidos": {
+          "minimum": 0,
+          "title": "Invalidos",
+          "type": "integer"
+        }
+      },
+      "required": [
+        "itens",
+        "vazios",
+        "invalidos"
+      ],
+      "title": "Contagens",
+      "type": "object"
+    }
+  },
+  "additionalProperties": false,
+  "description": "Um lote do extrato de terminal: só contagens agregadas, nunca registros individuais.",
+  "properties": {
+    "versao": {
+      "const": "1.0",
+      "title": "Versao",
+      "type": "string"
+    },
+    "id": {
+      "description": "Identificador único e estável do lote (idempotência).",
+      "maxLength": 64,
+      "minLength": 1,
+      "title": "Id",
+      "type": "string"
+    },
+    "operacao_id": {
+      "maxLength": 64,
+      "minLength": 1,
+      "title": "Operacao Id",
+      "type": "string"
+    },
+    "unidade_id": {
+      "minimum": 1,
+      "title": "Unidade Id",
+      "type": "integer"
+    },
+    "lote": {
+      "minimum": 1,
+      "title": "Lote",
+      "type": "integer"
+    },
+    "total_lotes": {
+      "minimum": 1,
+      "title": "Total Lotes",
+      "type": "integer"
+    },
+    "contagens": {
+      "$ref": "#/$defs/Contagens"
+    },
+    "checksum": {
+      "description": "SHA-256 do pacote canônico sem checksum e assinatura.",
+      "pattern": "^[0-9a-f]{64}$",
+      "title": "Checksum",
+      "type": "string"
+    },
+    "assinatura": {
+      "description": "HMAC-SHA256 da unidade sobre o checksum.",
+      "pattern": "^[0-9a-f]{64}$",
+      "title": "Assinatura",
+      "type": "string"
+    }
+  },
+  "required": [
+    "versao",
+    "id",
+    "operacao_id",
+    "unidade_id",
+    "lote",
+    "total_lotes",
+    "contagens",
+    "checksum",
+    "assinatura"
+  ],
+  "title": "Pacote",
+  "type": "object"
+}
