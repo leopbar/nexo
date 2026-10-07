@@ -11,6 +11,11 @@ class UnidadeConfig(BaseModel):
     chave_hmac: str = Field(min_length=16, max_length=128)
 
 
+class Item(BaseModel):
+    titulo: str = Field(min_length=1, max_length=80)
+    descricao: str = Field(default="", max_length=200)
+
+
 class ConfigColeta(BaseModel):
     operacao_id: str = Field(min_length=1, max_length=64)
     unidades: list[UnidadeConfig] = Field(min_length=1, max_length=50)
@@ -29,6 +34,9 @@ class ConfigColeta(BaseModel):
     max_tentativas: int = Field(default=5, ge=1, le=50)
     janela_envio: int = Field(default=4, ge=1, le=64)
     seed: int | None = None
+    agentes: bool = False
+    lote_agentes: int = Field(default=50, ge=1, le=200)
+    itens: list[Item] = Field(default_factory=list, max_length=8)
 
     @model_validator(mode="after")
     def _coerente(self) -> "ConfigColeta":
@@ -40,6 +48,8 @@ class ConfigColeta(BaseModel):
             raise ValueError("prob_vazio + prob_invalido deve ser menor que 1")
         if self.intervalo_registro_s > self.duracao_s:
             raise ValueError("intervalo de registro maior que a duração")
+        if self.itens and len(self.itens) != self.num_itens:
+            raise ValueError("o catálogo deve ter um item por número de itens")
         ids = [f.id for f in self.unidades]
         if len(set(ids)) != len(ids):
             raise ValueError("ids de unidade repetidos")
@@ -55,3 +65,12 @@ class RegistroManual(BaseModel):
     """Registro digitado no terminal; o que não for um item válido nem 'vazio' vira invalido."""
 
     digitado: str = Field(max_length=20)
+
+
+class ChaveOpenAI(BaseModel):
+    chave: str | None = Field(default=None, max_length=256)
+
+
+class AlternarModelo(BaseModel):
+    modelo: str = Field(max_length=64)
+    ativo: bool

@@ -96,6 +96,25 @@ redistribui falhas.
 - **Extrato do banco.** O extrato de terminal é calculado a partir dos registros gravados (e
   validado contra uma agregação SQL), não dos contadores em memória.
 
+## Agentes de IA
+
+Com **Agentes de IA** ligado na configuração, os registros deixam de ser sorteados e passam
+a vir de modelos da OpenAI. O ritmo de chegada aos terminais continua o mesmo; quem chega
+entra numa fila e, a cada lote de participantes (padrão 50), um modelo sorteado entre os
+ligados recebe o catálogo e devolve um registro por participante, inclusive vazio (`V`) e
+inválido (`I`). O prompt tem cerca de 100 tokens e a resposta é só a lista de registros.
+
+- A chave e os modelos ficam no botão do robô no cabeçalho. A chave é guardada no banco
+  da coleta (ou vem de `OPENAI_API_KEY`) e nunca volta inteira para o painel.
+- O esforço de raciocínio é sempre o mínimo que cada modelo aceita (`none`, depois
+  `minimal`, depois `low`).
+- Desligar um modelo o tira da coleta na hora, mesmo com a operação em andamento.
+- Se uma chamada falhar ou vier incompleta, os registros que faltam são sorteados como no
+  modo comum. Ao fechar, o terminal espera os lotes em andamento antes de travar.
+- Só a coleta muda: a consolidação recebe os mesmos extratos e não sabe quem registrou.
+- Os preços do catálogo ([`agentes.py`](services/coleta/app/agentes.py)) são os da
+  página da OpenAI em outubro de 2026 e servem para a estimativa e o gasto exibidos.
+
 ## Regras de consolidação
 
 Vazios e inválidos são contados e exibidos, mas o predominante sai só dos registros válidos, pela

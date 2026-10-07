@@ -7,6 +7,7 @@ import { sementeAleatoria } from '../lib/rng'
 import type {
   Checkpoint,
   Contagens,
+  EstadoAgentes,
   EstatisticasTransporte,
   EventoLog,
   UnidadeConsolidacao,
@@ -44,6 +45,8 @@ interface Estado {
   aba: 'coleta' | 'consolidacao'
   avisos: Aviso[]
   consolidacaoAberta: boolean
+  agentesAberto: boolean
+  agentes: EstadoAgentes | null
 
   faseColeta: string
   segundo: number
@@ -74,6 +77,7 @@ interface Estado {
   avisar: (texto: string, tipo?: Aviso['tipo']) => void
   dispensarAviso: (id: number) => void
   definirConsolidacaoAberta: (v: boolean) => void
+  definirAgentesAberto: (v: boolean) => void
   marcarReenvio: () => void
 }
 
@@ -101,6 +105,8 @@ export const useOperacao = create<Estado>()(
       aba: 'coleta',
       avisos: [],
       consolidacaoAberta: false,
+      agentesAberto: false,
+      agentes: null,
 
       faseColeta: 'configuracao',
       segundo: 0,
@@ -142,6 +148,7 @@ export const useOperacao = create<Estado>()(
                 duracao: d.config?.duracao_s ?? get().config.duracao,
                 unidades: porId(d.unidades),
                 checkpoints: d.checkpoints,
+                agentes: d.agentes ?? get().agentes,
                 ...(m.tipo === 'reiniciado' ? { distribuicaoIncompleta: false } : {}),
               })
               break
@@ -166,6 +173,9 @@ export const useOperacao = create<Estado>()(
               break
             case 'distribuicao_incompleta':
               set({ distribuicaoIncompleta: true })
+              break
+            case 'agentes':
+              set({ agentes: d })
               break
           }
         } else if (m.origem === 'transporte') {
@@ -267,6 +277,7 @@ export const useOperacao = create<Estado>()(
       },
       dispensarAviso: (id) => set({ avisos: get().avisos.filter((a) => a.id !== id) }),
       definirConsolidacaoAberta: (consolidacaoAberta) => set({ consolidacaoAberta }),
+      definirAgentesAberto: (agentesAberto) => set({ agentesAberto }),
       marcarReenvio: () => set({ distribuicaoIncompleta: false }),
     }),
     {

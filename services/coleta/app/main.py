@@ -11,7 +11,8 @@ from fastapi.responses import JSONResponse
 from sqlalchemy.ext.asyncio import async_sessionmaker, create_async_engine
 
 from . import config
-from .esquemas import ComandoRelogio, ConfigColeta, RegistroManual
+from .agentes import Agentes
+from .esquemas import AlternarModelo, ChaveOpenAI, ComandoRelogio, ConfigColeta, RegistroManual
 from .logs import configurar_logs
 from .modelos import Base
 from .motor import ComandoInvalido, NaoEncontrado, SistemaColeta
@@ -25,7 +26,10 @@ async def ciclo_de_vida(app: FastAPI):
         async with engine.begin() as conexao:
             await conexao.run_sync(Base.metadata.create_all)
     cliente = httpx.AsyncClient(timeout=None, limits=httpx.Limits(max_connections=400, max_keepalive_connections=100))
-    sistema = SistemaColeta(async_sessionmaker(engine, expire_on_commit=False), cliente, config.TRANSPORTE_URL)
+    sessoes = async_sessionmaker(engine, expire_on_commit=False)
+    agentes = Agentes(sessoes, cliente, config.OPENAI_API_KEY)
+    await agentes.carregar()
+    sistema = SistemaColeta(sessoes, cliente, config.TRANSPORTE_URL, agentes)
     await sistema.limpar_banco()
     app.state.sistema = sistema
     yield
@@ -100,6 +104,35 @@ async def registrar(unidade_id: int, registro: RegistroManual, request: Request)
 @app.get("/terminais/{unidade_id}/extrato")
 async def extrato(unidade_id: int, request: Request) -> dict:
     return await _sistema(request).extrato(unidade_id)
+
+
+@app.get("/agentes")
+async def agentes_estado(request: Request) -> dict:
+    return _sistema(request).agentes.estado()
+
+
+@app.post("/agentes/chave")
+async def agentes_chave(corpo: ChaveOpenAI, request: Request) -> dict:
+    try:
+        return await _sistema(request).agentes.definir_chave(corpo.chave)
+    except ValueError as erro:
+        raise ComandoInvalido(f"Chave salva, mas a verificação falhou: {erro}") from erro
+
+
+@app.post("/agentes/verificar")
+async def agentes_verificar(request: Request) -> dict:
+    try:
+        return await _sistema(request).agentes.verificar()
+    except ValueError as erro:
+        raise ComandoInvalido(str(erro)) from erro
+
+
+@app.post("/agentes/modelos")
+async def agentes_modelo(corpo: AlternarModelo, request: Request) -> dict:
+    try:
+        return await _sistema(request).agentes.alternar(corpo.modelo, corpo.ativo)
+    except KeyError as erro:
+        raise NaoEncontrado(f"modelo {corpo.modelo} fora do catálogo") from erro
 
 
 @app.websocket("/eventos")

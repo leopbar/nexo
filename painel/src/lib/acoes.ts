@@ -50,6 +50,9 @@ export function iniciarOperacao() {
         max_tentativas: c.maxTentativas,
         janela_envio: c.janelaEnvio,
         seed,
+        agentes: c.agentes,
+        lote_agentes: c.loteAgentes,
+        itens: c.nomesItens.map((titulo, i) => ({ titulo: titulo.trim() || `Item ${i + 1}`, descricao: c.descricoesItens[i]?.trim() ?? '' })),
       }),
       chamar('consolidacao', '/configurar', {
         operacao_id: operacaoId,
@@ -72,7 +75,12 @@ export function iniciarOperacao() {
     ])
     relogio.retomar()
     useOperacao.getState().definirRelogio({ pausado: false })
-    if (escala !== 1) await Promise.all(SERVICOS.map((s) => chamar(s, '/relogio', { acao: 'escala', escala })))
+    // Com agentes de IA a velocidade fica em 1x: a resposta dos modelos não acelera junto.
+    // O /reiniciar acima já devolveu os relógios dos serviços a 1x.
+    if (c.agentes) {
+      relogio.definirEscala(1)
+      useOperacao.getState().definirRelogio({ escala: 1 })
+    } else if (escala !== 1) await Promise.all(SERVICOS.map((s) => chamar(s, '/relogio', { acao: 'escala', escala })))
     await Promise.all([chamar('coleta', '/iniciar'), chamar('consolidacao', '/iniciar')])
   })
 }
@@ -114,4 +122,16 @@ export function acelerar(escala: number) {
     relogio.definirEscala(escala)
     useOperacao.getState().definirRelogio({ escala })
   })
+}
+
+export function salvarChaveOpenAI(chave: string | null) {
+  return tentar(() => chamar('coleta', '/agentes/chave', { chave }), chave ? 'Chave da OpenAI salva e verificada.' : 'Chave da OpenAI removida.')
+}
+
+export function verificarModelos() {
+  return tentar(() => chamar('coleta', '/agentes/verificar'), 'Modelos verificados na conta da OpenAI.')
+}
+
+export function alternarModelo(modelo: string, ativo: boolean) {
+  return tentar(() => chamar('coleta', '/agentes/modelos', { modelo, ativo }))
 }

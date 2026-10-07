@@ -93,3 +93,25 @@ export interface EstatisticasTransporte {
   recusados: number
   quedas: number
 }
+
+export interface ModeloAgente {
+  id: string
+  nome: string
+  entrada: number
+  saida: number
+  ativo: boolean
+  disponivel: boolean | null
+  chamadas: number
+  falhas: number
+  custo: number
+  ultimo_erro: string | null
+}
+
+export interface EstadoAgentes {
+  chave: string | null
+  verificado: boolean
+  custo_total: number
+  chamadas: number
+  falhas: number
+  modelos: ModeloAgente[]
+}

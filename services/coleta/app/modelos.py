@@ -53,3 +53,13 @@ class PacoteGerado(Base):
     total_lotes: Mapped[int] = mapped_column(Integer)
     conteudo: Mapped[dict] = mapped_column(JSON)
     status: Mapped[str] = mapped_column(String(16), default="pendente", server_default="pendente")
+
+
+class AjusteAgentes(Base):
+    """Linha única com a chave da OpenAI e os modelos ativos. Sobrevive a reinícios da operação."""
+
+    __tablename__ = "ajustes_agentes"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=False)
+    chave: Mapped[str | None] = mapped_column(String(256), nullable=True)
+    ativos: Mapped[list] = mapped_column(JSON)

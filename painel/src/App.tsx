@@ -3,6 +3,7 @@ import { useEffect } from 'react'
 import { Avisos } from './components/Avisos'
 import { Cabecalho } from './components/Cabecalho'
 import { Legenda } from './components/Legenda'
+import { PainelAgentes } from './components/PainelAgentes'
 import { PainelLateral } from './components/PainelLateral'
 import { ConsolidacaoFinal } from './components/ConsolidacaoFinal'
 import { RotulosMapa } from './components/RotulosMapa'
@@ -24,6 +25,7 @@ export function App() {
         <PainelLateral />
       </main>
       <ConsolidacaoFinal />
+      <PainelAgentes />
       <Avisos />
     </div>
   )

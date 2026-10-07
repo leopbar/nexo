@@ -1,4 +1,4 @@
-import { Dices } from 'lucide-react'
+import { Bot, Dices } from 'lucide-react'
 import type { ReactNode } from 'react'
 
 import type { ConfigOperacao } from '../lib/config'
@@ -8,6 +8,8 @@ import { useOperacao } from '../store/operacao'
 import { Button } from './ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from './ui/card'
 import { Input } from './ui/input'
+import { Switch } from './ui/switch'
+import { estimarCusto, modelosProntos, usd } from './PainelAgentes'
 
 type ChaveNumerica = { [K in keyof ConfigOperacao]: ConfigOperacao[K] extends number ? K : never }[keyof ConfigOperacao]
 
@@ -48,6 +50,46 @@ function Grupo({ titulo, sistema, children }: { titulo: string; sistema: string;
   )
 }
 
+function GrupoAgentes() {
+  const config = useOperacao((s) => s.config)
+  const agentes = useOperacao((s) => s.agentes)
+  const definir = useOperacao((s) => s.definirConfig)
+  const abrir = useOperacao((s) => s.definirAgentesAberto)
+  const prontos = modelosProntos(agentes).length
+  const estimativa = estimarCusto(config, agentes)
+  const pendencia = !agentes?.chave ? 'cadastre a chave da OpenAI' : prontos === 0 ? 'ligue ao menos um modelo' : null
+
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle>Agentes de IA</CardTitle>
+        <span className="text-[10px] text-zinc-600">sistema de coleta</span>
+      </CardHeader>
+      <CardContent className="flex flex-col gap-2.5">
+        <Switch ligado={config.agentes} aoMudar={(agentes) => definir({ agentes })} rotulo="Participantes registram por agentes de IA" />
+        {config.agentes && (
+          <>
+            <div className="grid grid-cols-2 gap-x-3">
+              <Campo rotulo="Participantes por chamada" chave="loteAgentes" min={1} max={200} />
+              <div className="flex flex-col justify-end text-[11px] text-zinc-500">
+                <span>
+                  ≈ {num(estimativa.chamadas)} chamadas · ≈ {usd(estimativa.custo)}
+                </span>
+                <span>{prontos} modelos ligados</span>
+              </div>
+            </div>
+            {pendencia && <p className="text-[11px] text-amber-300">Para iniciar, {pendencia}.</p>}
+            <p className="text-[11px] text-zinc-600">Vazios e inválidos ficam a cargo dos modelos; se uma chamada falhar, aquele lote é sorteado com os percentuais acima.</p>
+          </>
+        )}
+        <Button variant="secondary" size="sm" onClick={() => abrir(true)}>
+          <Bot /> Chave e modelos
+        </Button>
+      </CardContent>
+    </Card>
+  )
+}
+
 export function PainelConfiguracao() {
   const config = useOperacao((s) => s.config)
   const definir = useOperacao((s) => s.definirConfig)
@@ -79,6 +121,8 @@ export function PainelConfiguracao() {
         <Campo rotulo="Checkpoint" chave="intervaloCheckpoint" min={1} max={120} sufixo="s" />
         <Campo rotulo="Participantes por ponto" chave="participantesPorPonto" min={1} max={200} />
       </Grupo>
+
+      <GrupoAgentes />
 
       <Grupo titulo="Distribuição" sistema="distribuidor das unidades">
         <Campo rotulo="Tamanho do pacote" chave="tamanhoPacote" min={10} max={10000} passo={50} sufixo="registros" />
@@ -120,9 +164,20 @@ export function PainelConfiguracao() {
         </CardHeader>
         <CardContent className="flex flex-col gap-1.5">
           {config.nomesItens.map((nome, i) => (
-            <div key={i} className="flex items-center gap-2">
-              <span className="h-3 w-3 shrink-0 rounded-sm" style={{ background: corItem(i) }} />
-              <Input value={nome} onChange={(e) => definir({ nomesItens: config.nomesItens.map((n, j) => (j === i ? e.target.value : n)) })} />
+            <div key={i} className="flex flex-col gap-1">
+              <div className="flex items-center gap-2">
+                <span className="h-3 w-3 shrink-0 rounded-sm" style={{ background: corItem(i) }} />
+                <Input value={nome} onChange={(e) => definir({ nomesItens: config.nomesItens.map((n, j) => (j === i ? e.target.value : n)) })} />
+              </div>
+              {config.agentes && (
+                <Input
+                  className="ml-5 w-[calc(100%-1.25rem)] text-xs"
+                  maxLength={200}
+                  placeholder="descrição curta para os agentes (opcional)"
+                  value={config.descricoesItens[i] ?? ''}
+                  onChange={(e) => definir({ descricoesItens: config.descricoesItens.map((d, j) => (j === i ? e.target.value : d)) })}
+                />
+              )}
             </div>
           ))}
         </CardContent>

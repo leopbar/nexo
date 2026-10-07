@@ -3,6 +3,9 @@
 Enquanto a coleta está aberta, nenhuma terminal tem canal com a central. Ao fim do
 tempo os terminais travam, o extrato é calculado a partir dos registros gravados no
 banco e dividido em pacotes, que só saem quando a distribuição é ordenada.
+
+Com os agentes ligados, quem chega à terminal entra numa fila; a cada lote completo
+um modelo de IA registra por aquele grupo, e os registros entram quando a resposta chega.
 """
 
 from __future__ import annotations
@@ -21,6 +24,7 @@ from sqlalchemy import delete, func, insert, select, update
 from sqlalchemy.ext.asyncio import async_sessionmaker
 
 from . import extrato as ext
+from .agentes import Agentes, Catalogo
 from .esquemas import ComandoRelogio, ConfigColeta
 from .eventos import Hub
 from .modelos import Extrato, Checkpoint, PacoteGerado, Registro
@@ -58,6 +62,8 @@ class Terminal:
     ritmo: list[int]
     rng: random.Random
     contagens: dict[str, Any]
+    novos: dict[str, Any]  # registros registrados desde o último andamento publicado
+    fila: int = 0  # participantes aguardando o lote do agente
     aberta: bool = False
     manifesto: dict | None = None
     pacotes: list[dict] = field(default_factory=list)
@@ -86,12 +92,15 @@ class Terminal:
 
 
 class SistemaColeta:
-    def __init__(self, sessoes: async_sessionmaker, cliente: httpx.AsyncClient, transporte_url: str) -> None:
+    def __init__(self, sessoes: async_sessionmaker, cliente: httpx.AsyncClient, transporte_url: str, agentes: Agentes) -> None:
         self.relogio = RelogioSimulado()
         self.hub = Hub("coleta", self.relogio)
         self.sessoes = sessoes
         self.cliente = cliente
         self.transporte_url = transporte_url
+        self.agentes = agentes
+        agentes.ao_mudar = lambda: self.hub.publicar("agentes", agentes.estado())
+        self.catalogo = Catalogo([])
         self.fase = Fase.CONFIGURACAO
         self.config: ConfigColeta | None = None
         self.terminais: dict[int, Terminal] = {}
@@ -133,7 +142,17 @@ class SistemaColeta:
 
     async def configurar(self, cfg: ConfigColeta) -> dict:
         self._exigir(Fase.CONFIGURACAO, Fase.PRONTA, acao="configurar")
+        if cfg.agentes:
+            if not self.agentes.chave:
+                raise ComandoInvalido("Agentes de IA ligados, mas nenhuma chave da OpenAI foi cadastrada.")
+            if not self.agentes.prontos:
+                raise ComandoInvalido("Agentes de IA ligados, mas nenhum modelo está ativo.")
         self.config = cfg
+        self.catalogo = Catalogo(
+            [p.titulo for p in cfg.itens] or [f"Item {i}" for i in range(1, cfg.num_itens + 1)],
+            [p.descricao for p in cfg.itens],
+        )
+        self.agentes.zerar_uso()
         self.terminais = {}
         for unidade in cfg.unidades:
             rng = random.Random(f"{cfg.seed}:terminal:{unidade.id}") if cfg.seed is not None else random.Random()
@@ -150,6 +169,7 @@ class SistemaColeta:
                 ritmo=ext.distribuir_ritmo(registros, self._num_intervalos, rng),
                 rng=rng,
                 contagens=ext.contagens_vazias(cfg.num_itens),
+                novos=ext.contagens_vazias(cfg.num_itens),
             )
         self.checkpoints = []
         self.segundo = 0
@@ -201,6 +221,7 @@ class SistemaColeta:
             tarefa.cancel()
         await asyncio.gather(*tarefas, return_exceptions=True)
         await self.limpar_banco()
+        self.agentes.zerar_uso()
         self.config = None
         self.terminais = {}
         self.checkpoints = []
@@ -230,37 +251,64 @@ class SistemaColeta:
         assert cfg
         proximo_checkpoint = cfg.intervalo_checkpoint_s
         intervalos = self._num_intervalos
+        lotes_agentes: list[asyncio.Task] = []
         for k in range(intervalos):
             decorrido = (k + 1) * cfg.intervalo_registro_s
             await self.relogio.dormir_ate(self.inicio + decorrido)
             segundo = round(decorrido)
+            self.segundo = segundo
             linhas: list[dict] = []
-            novos: dict[int, dict] = {}
             for terminal in self.terminais.values():
+                if cfg.agentes:
+                    terminal.fila += terminal.ritmo[k]
+                    while terminal.fila >= cfg.lote_agentes or (k == intervalos - 1 and terminal.fila > 0):
+                        n = min(cfg.lote_agentes, terminal.fila)
+                        terminal.fila -= n
+                        lotes_agentes.append(self._disparar(self._registrar_com_agente(terminal, n)))
+                    continue
                 lote = ext.contagens_vazias(cfg.num_itens)
                 for _ in range(terminal.ritmo[k]):
                     classe = ext.amostrar_classe(terminal.rng, cfg.num_itens, cfg.prob_vazio, cfg.prob_invalido)
                     linhas.append({"unidade_id": terminal.id, "segundo": segundo, "classe": classe})
                     ext.somar_classe(lote, classe)
                 ext.acumular(terminal.contagens, lote)
-                novos[terminal.id] = lote
+                ext.acumular(terminal.novos, lote)
             if linhas:
                 async with self.sessoes() as sessao, sessao.begin():
                     await sessao.execute(insert(Registro), linhas)
-            self.segundo = segundo
-            self.hub.publicar(
-                "andamento",
-                {
-                    "segundo": segundo,
-                    "duracao": cfg.duracao_s,
-                    "intervalo": cfg.intervalo_registro_s,
-                    "unidades": [u.andamento() | {"novos": novos[u.id]} for u in self.terminais.values()],
-                },
-            )
-            if decorrido + 1e-9 >= proximo_checkpoint or k == intervalos - 1:
+            self._publicar_andamento()
+            if decorrido + 1e-9 >= proximo_checkpoint and k < intervalos - 1:
                 await self._gravar_checkpoint(segundo)
                 proximo_checkpoint += cfg.intervalo_checkpoint_s
+        # Quem entrou na fila antes do fechamento ainda registra: espera os agentes responderem.
+        if lotes_agentes:
+            await asyncio.gather(*lotes_agentes)
+            self._publicar_andamento()
+        await self._gravar_checkpoint(self.segundo)
         await self._fechar()
+
+    def _publicar_andamento(self) -> None:
+        cfg = self.config
+        assert cfg
+        unidades = []
+        for terminal in self.terminais.values():
+            unidades.append(terminal.andamento() | {"novos": terminal.novos})
+            terminal.novos = ext.contagens_vazias(cfg.num_itens)
+        self.hub.publicar("andamento", {"segundo": self.segundo, "duracao": cfg.duracao_s, "intervalo": cfg.intervalo_registro_s, "unidades": unidades})
+
+    async def _registrar_com_agente(self, terminal: Terminal, n: int) -> None:
+        """Um lote de n participantes registrado por um modelo sorteado; o que faltar é sorteado."""
+        cfg = self.config
+        assert cfg
+        resposta = await self.agentes.gerar_lote(self.catalogo, n)
+        classes = resposta[1] if resposta else []
+        classes += [ext.amostrar_classe(terminal.rng, cfg.num_itens, cfg.prob_vazio, cfg.prob_invalido) for _ in range(n - len(classes))]
+        segundo = self.segundo
+        async with self.sessoes() as sessao, sessao.begin():
+            await sessao.execute(insert(Registro), [{"unidade_id": terminal.id, "segundo": segundo, "classe": o} for o in classes])
+        lote = ext.contar(classes, cfg.num_itens)
+        ext.acumular(terminal.contagens, lote)
+        ext.acumular(terminal.novos, lote)
 
     async def _gravar_checkpoint(self, segundo: int) -> None:
         unidades = [
@@ -380,4 +428,5 @@ class SistemaColeta:
             "config": config,
             "unidades": [u.andamento() for u in self.terminais.values()],
             "checkpoints": self.checkpoints,
+            "agentes": self.agentes.estado(),
         }

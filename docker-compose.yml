@@ -40,6 +40,7 @@ services:
     environment:
       DATABASE_URL: postgresql+asyncpg://coleta:coleta@coleta-db:5432/coleta
       TRANSPORTE_URL: http://transporte:8000
+      OPENAI_API_KEY: ${OPENAI_API_KEY:-}  # opcional: a chave também pode ser cadastrada pelo painel
     depends_on:
       coleta-db:
         condition: service_healthy

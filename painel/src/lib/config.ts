@@ -8,6 +8,7 @@ export interface ConfigOperacao {
   participantesMax: number
   numItens: number
   nomesItens: string[]
+  descricoesItens: string[]
   coberturaMin: number
   coberturaMax: number
   probVazio: number
@@ -27,6 +28,8 @@ export interface ConfigOperacao {
   taxaAtrasoExtremo: number
   eventosOffline: number
   seed: string
+  agentes: boolean
+  loteAgentes: number
 }
 
 export const NOMES_ITENS = [
@@ -47,6 +50,7 @@ export const CONFIG_PADRAO: ConfigOperacao = {
   participantesMax: 5000,
   numItens: 5,
   nomesItens: NOMES_ITENS.slice(0, 5),
+  descricoesItens: ['', '', '', '', ''],
   coberturaMin: 70,
   coberturaMax: 95,
   probVazio: 3,
@@ -66,13 +70,16 @@ export const CONFIG_PADRAO: ConfigOperacao = {
   taxaAtrasoExtremo: 2,
   eventosOffline: 1,
   seed: '',
+  agentes: false,
+  loteAgentes: 50,
 }
 
 /** Ajusta listas de nomes ao número de unidades/itens. */
 export function normalizarConfig(c: ConfigOperacao): ConfigOperacao {
   const nomesUnidades = Array.from({ length: c.numUnidades }, (_, i) => c.nomesUnidades[i] ?? NOMES_CIDADES[i % NOMES_CIDADES.length])
   const nomesItens = Array.from({ length: c.numItens }, (_, i) => c.nomesItens[i] ?? NOMES_ITENS[i] ?? `Item ${i + 1}`)
-  return { ...c, nomesUnidades, nomesItens }
+  const descricoesItens = Array.from({ length: c.numItens }, (_, i) => c.descricoesItens?.[i] ?? '')
+  return { ...c, nomesUnidades, nomesItens, descricoesItens }
 }
 
 export function seedNumerica(c: ConfigOperacao): number | null {

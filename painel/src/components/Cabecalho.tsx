@@ -1,4 +1,4 @@
-import { Check, Pause, Play, RotateCcw, Send, ShieldCheck, Layers, Network, Wifi, WifiOff } from 'lucide-react'
+import { Bot, Check, Pause, Play, RotateCcw, Send, ShieldCheck, Layers, Network, Wifi, WifiOff } from 'lucide-react'
 import { motion } from 'motion/react'
 import { useEffect, useState, type ComponentProps } from 'react'
 
@@ -6,6 +6,7 @@ import { acelerar, habilitarConsolidacao, iniciarOperacao, pausar, reiniciarTudo
 import { NOMES_SERVICOS, SERVICOS } from '../lib/api'
 import { cn, tempo } from '../lib/utils'
 import { FASES, useOperacao, useFaseGeral } from '../store/operacao'
+import { modelosProntos } from './PainelAgentes'
 import { Button } from './ui/button'
 import { Switch } from './ui/switch'
 
@@ -68,10 +69,11 @@ function AcaoPrincipal() {
   const incompleta = useOperacao((s) => s.distribuicaoIncompleta)
   const conectado = useOperacao((s) => Object.values(s.conexoes).every(Boolean))
   const abrirConsolidacao = useOperacao((s) => s.definirConsolidacaoAberta)
+  const agentesPendentes = useOperacao((s) => s.config.agentes && (!s.agentes?.chave || modelosProntos(s.agentes).length === 0))
 
   if (fase === 'configuracao')
     return (
-      <Ocupado acao={iniciarOperacao} variant="accent" disabled={!conectado}>
+      <Ocupado acao={iniciarOperacao} variant="accent" disabled={!conectado || agentesPendentes} title={agentesPendentes ? 'Agentes de IA: cadastre a chave e ligue ao menos um modelo.' : undefined}>
         <Network /> Iniciar operação
       </Ocupado>
     )
@@ -124,6 +126,7 @@ function Relogio() {
 function Controles() {
   const escala = useOperacao((s) => s.escala)
   const pausado = useOperacao((s) => s.pausado)
+  const agentesLigados = useOperacao((s) => s.config.agentes)
   return (
     <div className="flex items-center gap-1 rounded-lg border border-zinc-800 bg-zinc-950 p-1">
       <Ocupado acao={() => pausar(!pausado)} variant="ghost" size="icon" title={pausado ? 'Retomar' : 'Pausar'}>
@@ -133,7 +136,12 @@ function Controles() {
         <button
           key={e}
           onClick={() => acelerar(e)}
-          className={cn('h-8 rounded-md px-2.5 font-mono text-xs transition-colors cursor-pointer', escala === e ? 'bg-zinc-800 text-zinc-100' : 'text-zinc-500 hover:text-zinc-200')}
+          disabled={agentesLigados && e !== escala}
+          title={agentesLigados ? 'Com agentes de IA a velocidade fica em 1x; ajuste a duração da coleta.' : undefined}
+          className={cn(
+            'h-8 rounded-md px-2.5 font-mono text-xs transition-colors cursor-pointer disabled:cursor-not-allowed disabled:opacity-30',
+            escala === e ? 'bg-zinc-800 text-zinc-100' : 'text-zinc-500 enabled:hover:text-zinc-200',
+          )}
         >
           {e}x
         </button>
@@ -181,6 +189,8 @@ function useAutomacao() {
 export function Cabecalho() {
   const automatico = useOperacao((s) => s.automatico)
   const definirAutomatico = useOperacao((s) => s.definirAutomatico)
+  const abrirAgentes = useOperacao((s) => s.definirAgentesAberto)
+  const agentesLigados = useOperacao((s) => s.config.agentes)
   useAutomacao()
   return (
     <header className="flex h-16 shrink-0 items-center gap-4 border-b border-zinc-900 bg-black/80 px-4 backdrop-blur">
@@ -198,6 +208,9 @@ export function Cabecalho() {
       </div>
       <div className="flex items-center gap-3">
         <Switch ligado={automatico} aoMudar={definirAutomatico} rotulo="Automático" />
+        <Button variant="ghost" size="icon" onClick={() => abrirAgentes(true)} title="Agentes de IA: chave e modelos" className={cn(agentesLigados && 'text-violet-300')}>
+          <Bot />
+        </Button>
         <AcaoPrincipal />
         <Controles />
         <Relogio />

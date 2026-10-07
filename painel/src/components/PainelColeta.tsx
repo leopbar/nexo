@@ -1,7 +1,9 @@
-import { EyeOff } from 'lucide-react'
+import { Bot, EyeOff } from 'lucide-react'
 
 import { cn, num, pct, tempo } from '../lib/utils'
 import { useOperacao } from '../store/operacao'
+import { modelosProntos, usd } from './PainelAgentes'
+import { Button } from './ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from './ui/card'
 
 function Indicador({ rotulo, valor, cor }: { rotulo: string; valor: string; cor: string }) {
@@ -10,6 +12,27 @@ function Indicador({ rotulo, valor, cor }: { rotulo: string; valor: string; cor:
       <div className="text-[10px] uppercase tracking-wider text-zinc-500">{rotulo}</div>
       <div className={cn('font-mono text-sm font-semibold tabular-nums', cor)}>{valor}</div>
     </div>
+  )
+}
+
+function CartaoAgentes() {
+  const agentes = useOperacao((s) => s.agentes)
+  const abrir = useOperacao((s) => s.definirAgentesAberto)
+  if (!agentes) return null
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle>Agentes de IA</CardTitle>
+        <Button variant="ghost" size="sm" onClick={() => abrir(true)}>
+          <Bot /> {modelosProntos(agentes).length} modelos ligados
+        </Button>
+      </CardHeader>
+      <CardContent className="grid grid-cols-3 gap-2">
+        <Indicador rotulo="Chamadas" valor={num(agentes.chamadas)} cor="text-zinc-100" />
+        <Indicador rotulo="Falhas" valor={num(agentes.falhas)} cor={agentes.falhas ? 'text-amber-300' : 'text-zinc-500'} />
+        <Indicador rotulo="Gasto" valor={usd(agentes.custo_total)} cor="text-emerald-300" />
+      </CardContent>
+    </Card>
   )
 }
 
@@ -26,6 +49,7 @@ export function PainelColeta() {
   const progresso = duracao ? Math.min(1, segundo / duracao) : 0
   const abertas = lista.filter((f) => f.aberta).length
   const cores = new Map(topologia.unidades.map((t) => [t.id, t.cor]))
+  const agentesLigados = useOperacao((s) => s.config.agentes)
 
   return (
     <div className="flex flex-col gap-3">
@@ -84,6 +108,8 @@ export function PainelColeta() {
           </div>
         </CardContent>
       </Card>
+
+      {agentesLigados && <CartaoAgentes />}
 
       <Card>
         <CardHeader>
