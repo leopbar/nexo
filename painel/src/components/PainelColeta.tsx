@@ -4,14 +4,28 @@ import { cn, num, pct, tempo } from '../lib/utils'
 import { useOperacao } from '../store/operacao'
 import { Card, CardContent, CardHeader, CardTitle } from './ui/card'
 
+function Indicador({ rotulo, valor, cor }: { rotulo: string; valor: string; cor: string }) {
+  return (
+    <div className="rounded-lg border border-zinc-800/80 bg-zinc-900/50 px-2 py-1.5">
+      <div className="text-[10px] uppercase tracking-wider text-zinc-500">{rotulo}</div>
+      <div className={cn('font-mono text-sm font-semibold tabular-nums', cor)}>{valor}</div>
+    </div>
+  )
+}
+
 export function PainelColeta() {
   const unidades = useOperacao((s) => s.unidades)
   const segundo = useOperacao((s) => s.segundo)
   const duracao = useOperacao((s) => s.duracao)
   const fase = useOperacao((s) => s.faseColeta)
+  const topologia = useOperacao((s) => s.topologia)
   const lista = Object.values(unidades)
   const participantes = lista.reduce((s, f) => s + f.participantes, 0)
   const registros = lista.reduce((s, f) => s + f.total, 0)
+  const taxa = participantes ? registros / participantes : 0
+  const progresso = duracao ? Math.min(1, segundo / duracao) : 0
+  const abertas = lista.filter((f) => f.aberta).length
+  const cores = new Map(topologia.unidades.map((t) => [t.id, t.cor]))
 
   return (
     <div className="flex flex-col gap-3">
@@ -26,20 +40,47 @@ export function PainelColeta() {
       <Card>
         <CardHeader>
           <CardTitle>Cobertura</CardTitle>
-          <span className="font-mono text-xs text-zinc-400">
+          <span
+            className={cn(
+              'rounded-full px-2 py-0.5 font-mono text-[11px] tabular-nums',
+              fase === 'coleta' ? 'bg-violet-500/15 text-violet-300' : 'bg-zinc-800/80 text-zinc-400',
+            )}
+          >
             {fase === 'coleta' ? `${tempo(segundo)} / ${tempo(duracao)}` : fase === 'configuracao' || fase === 'pronta' ? 'terminais fechados' : 'terminais travados'}
           </span>
         </CardHeader>
-        <CardContent>
-          <div className="flex items-baseline justify-between">
-            <span className="font-mono text-3xl text-zinc-50 tabular-nums">{num(registros)}</span>
-            <span className="text-xs text-zinc-500 tabular-nums">de {num(participantes)} · {pct(participantes ? registros / participantes : 0)}</span>
+        <CardContent className="flex flex-col gap-3">
+          <div className="flex items-end justify-between gap-3">
+            <div>
+              <div className="bg-gradient-to-r from-emerald-300 to-cyan-300 bg-clip-text font-mono text-5xl font-semibold leading-none text-transparent tabular-nums">
+                {pct(taxa)}
+              </div>
+              <div className="mt-1 text-[11px] text-zinc-500">do participantes já registrou</div>
+            </div>
+            <div className="text-right">
+              <div className="font-mono text-2xl font-semibold leading-none text-amber-300 tabular-nums">{pct(participantes ? 1 - taxa : 0)}</div>
+              <div className="mt-1 text-[11px] text-zinc-500">sem registro</div>
+            </div>
           </div>
-          <div className="mt-2 h-1 overflow-hidden rounded-full bg-zinc-900">
-            <div className="h-full bg-violet-500 transition-[width] duration-1000" style={{ width: `${duracao ? Math.min(1, segundo / duracao) * 100 : 0}%` }} />
+
+          <div className="flex h-2.5 overflow-hidden rounded-full bg-amber-400/20">
+            <div className="h-full rounded-full bg-gradient-to-r from-emerald-400 to-cyan-400 transition-[width] duration-1000" style={{ width: `${taxa * 100}%` }} />
           </div>
-          <div className="mt-3 border-t border-zinc-900 pt-1.5 text-[11px] text-zinc-500 tabular-nums">
-            sem registro {num(participantes - registros)} · {pct(participantes ? (participantes - registros) / participantes : 0)}
+
+          <div className="grid grid-cols-3 gap-2">
+            <Indicador rotulo="Registrantes" valor={num(registros)} cor="text-emerald-300" />
+            <Indicador rotulo="Participantes" valor={num(participantes)} cor="text-zinc-100" />
+            <Indicador rotulo="Sem registro" valor={num(participantes - registros)} cor="text-amber-300" />
+          </div>
+
+          <div>
+            <div className="mb-1 flex justify-between text-[11px] text-zinc-500">
+              <span>tempo de coleta</span>
+              <span className="font-mono text-violet-300 tabular-nums">{pct(progresso)}</span>
+            </div>
+            <div className="h-1 overflow-hidden rounded-full bg-zinc-900">
+              <div className="h-full bg-violet-500 transition-[width] duration-1000" style={{ width: `${progresso * 100}%` }} />
+            </div>
           </div>
         </CardContent>
       </Card>
@@ -47,18 +88,37 @@ export function PainelColeta() {
       <Card>
         <CardHeader>
           <CardTitle>Terminais</CardTitle>
+          <span className="text-[11px] text-zinc-500 tabular-nums">
+            <span className="text-emerald-300">{abertas}</span> abertas · {lista.length - abertas} fechadas
+          </span>
         </CardHeader>
-        <CardContent className="flex flex-col gap-1.5">
-          {lista.map((f) => (
-            <div key={f.id} className="flex items-center gap-2 text-xs">
-              <span className="w-28 truncate text-zinc-300">{f.nome}</span>
-              <div className="h-1 flex-1 overflow-hidden rounded-full bg-zinc-900">
-                <div className={cn('h-full rounded-full transition-[width] duration-700', f.aberta ? 'bg-zinc-300' : 'bg-zinc-600')} style={{ width: `${f.cobertura * 100}%` }} />
+        <CardContent className="flex flex-col gap-1">
+          {lista.map((f) => {
+            const cor = cores.get(f.id) ?? '#a1a1aa'
+            return (
+              <div key={f.id} className="rounded-lg px-2 py-1.5 transition-colors hover:bg-zinc-900/70">
+                <div className="flex items-center gap-2">
+                  <span
+                    className={cn('h-2 w-2 shrink-0 rounded-full', f.aberta && 'animate-pulse')}
+                    style={{ background: cor, boxShadow: f.aberta ? `0 0 8px ${cor}` : undefined }}
+                  />
+                  <span className="flex-1 truncate text-xs text-zinc-200">{f.nome}</span>
+                  <span className="font-mono text-[11px] text-zinc-500 tabular-nums">
+                    {num(f.total)} <span className="text-zinc-600">/ {num(f.participantes)}</span>
+                  </span>
+                  <span className="w-14 text-right font-mono text-base font-semibold leading-none tabular-nums" style={{ color: cor }}>
+                    {pct(f.cobertura)}
+                  </span>
+                </div>
+                <div className="mt-1 ml-4 h-1.5 overflow-hidden rounded-full bg-zinc-900">
+                  <div
+                    className="h-full rounded-full transition-[width] duration-700"
+                    style={{ width: `${f.cobertura * 100}%`, background: cor, opacity: f.aberta ? 1 : 0.45 }}
+                  />
+                </div>
               </div>
-              <span className="w-12 text-right font-mono text-zinc-400 tabular-nums">{num(f.total)}</span>
-              <span className="w-11 text-right font-mono text-zinc-500 tabular-nums">{pct(f.cobertura)}</span>
-            </div>
-          ))}
+            )
+          })}
           {lista.length === 0 && <p className="text-xs text-zinc-600">Nenhuma terminal configurada.</p>}
         </CardContent>
       </Card>
