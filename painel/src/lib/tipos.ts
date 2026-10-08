@@ -29,6 +29,8 @@ export interface AndamentoUnidade {
   ausentes: number
   contagens: Contagens
   aberta: boolean
+  /** Participantes na fila que ainda não registraram (só no modo agentes de IA). */
+  fila: number
   distribuicao: StatusDistribuicao
   pacotes_total: number
   pacotes_confirmados: number

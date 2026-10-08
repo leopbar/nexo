@@ -69,8 +69,8 @@ botão *Habilitar consolidação* fica disponível durante a coleta justamente p
 recusa — a consolidação sabe o horário de fechamento pelo seu próprio relógio, sem
 perguntar nada à coleta.
 
-O modo **Automático** do painel avança sozinho do fechamento à distribuição e
-redistribui falhas.
+Todos os passos depois do fechamento (habilitar a consolidação, distribuir e reenviar)
+são manuais: nada avança sem um clique no painel.
 
 ## Decisões de projeto
 
@@ -110,7 +110,12 @@ inválido (`I`). O prompt tem cerca de 100 tokens e a resposta é só a lista de
   `minimal`, depois `low`).
 - Desligar um modelo o tira da coleta na hora, mesmo com a operação em andamento.
 - Se uma chamada falhar ou vier incompleta, os registros que faltam são sorteados como no
-  modo comum. Ao fechar, o terminal espera os lotes em andamento antes de travar.
+  modo comum.
+- Quando o tempo acaba a entrada fecha, mas quem já estava na fila ainda registra. O mapa
+  mostra "Coleta fechada", o relógio e o card de cobertura mostram quantos
+  participantes faltam, e os terminais só travam quando a última fila esvazia.
+- A velocidade fica travada em 1x, porque a resposta dos modelos não acelera; para
+  uma operação mais curta ou mais longa, ajuste a duração.
 - Só a coleta muda: a consolidação recebe os mesmos extratos e não sabe quem registrou.
 - Os preços do catálogo ([`agentes.py`](services/coleta/app/agentes.py)) são os da
   página da OpenAI em outubro de 2026 e servem para a estimativa e o gasto exibidos.

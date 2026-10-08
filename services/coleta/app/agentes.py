@@ -24,7 +24,6 @@ from .modelos import AjusteAgentes
 
 log = structlog.get_logger("agentes")
 
-URL_OPENAI = "https://api.openai.com/v1"
 TIMEOUT_S = 45
 CONCORRENCIA = 8
 
@@ -124,9 +123,10 @@ def mascarar(chave: str | None) -> str | None:
 
 
 class Agentes:
-    def __init__(self, sessoes: async_sessionmaker, cliente: httpx.AsyncClient, chave_ambiente: str | None = None) -> None:
+    def __init__(self, sessoes: async_sessionmaker, cliente: httpx.AsyncClient, chave_ambiente: str | None = None, url: str = "https://api.openai.com/v1") -> None:
         self.sessoes = sessoes
         self.cliente = cliente
+        self.url = url
         self.chave: str | None = chave_ambiente or None
         self.ativos: set[str] = set(ATIVOS_PADRAO)
         self.disponiveis: set[str] | None = None  # None = ainda não verificado na conta
@@ -181,7 +181,7 @@ class Agentes:
         if not self.chave:
             raise ValueError("nenhuma chave da OpenAI cadastrada")
         try:
-            resposta = await self.cliente.get(f"{URL_OPENAI}/models", headers=self._cabecalhos(), timeout=20)
+            resposta = await self.cliente.get(f"{self.url}/models", headers=self._cabecalhos(), timeout=20)
         except httpx.HTTPError as erro:
             raise ValueError(f"OpenAI inacessível: {erro!r}") from erro
         if resposta.status_code != 200:
@@ -262,7 +262,7 @@ class Agentes:
             }
             if esforco:
                 corpo["reasoning_effort"] = esforco
-            resposta = await self.cliente.post(f"{URL_OPENAI}/chat/completions", json=corpo, headers=self._cabecalhos(), timeout=TIMEOUT_S)
+            resposta = await self.cliente.post(f"{self.url}/chat/completions", json=corpo, headers=self._cabecalhos(), timeout=TIMEOUT_S)
             if resposta.status_code == 400 and esforco and "reasoning" in resposta.text and esforco in ESFORCOS[:-1]:
                 esforco = ESFORCOS[ESFORCOS.index(esforco) + 1]
                 self.esforco[modelo.id] = esforco

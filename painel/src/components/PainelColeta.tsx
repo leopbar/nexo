@@ -1,7 +1,7 @@
-import { Bot, EyeOff } from 'lucide-react'
+import { Bot, EyeOff, Users } from 'lucide-react'
 
 import { cn, num, pct, tempo } from '../lib/utils'
-import { useOperacao } from '../store/operacao'
+import { useOperacao, useFila } from '../store/operacao'
 import { modelosProntos, usd } from './PainelAgentes'
 import { Button } from './ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from './ui/card'
@@ -48,6 +48,8 @@ export function PainelColeta() {
   const taxa = participantes ? registros / participantes : 0
   const progresso = duracao ? Math.min(1, segundo / duracao) : 0
   const abertas = lista.filter((f) => f.aberta).length
+  const fila = useFila()
+  const emFila = fila === null ? 0 : lista.filter((f) => !f.aberta && f.fila > 0).length
   const cores = new Map(topologia.unidades.map((t) => [t.id, t.cor]))
   const agentesLigados = useOperacao((s) => s.config.agentes)
 
@@ -70,10 +72,19 @@ export function PainelColeta() {
               fase === 'coleta' ? 'bg-violet-500/15 text-violet-300' : 'bg-zinc-800/80 text-zinc-400',
             )}
           >
-            {fase === 'coleta' ? `${tempo(segundo)} / ${tempo(duracao)}` : fase === 'configuracao' || fase === 'pronta' ? 'terminais fechados' : 'terminais travados'}
+            {fila !== null ? 'entrada fechada' : fase === 'coleta' ? `${tempo(segundo)} / ${tempo(duracao)}` : fase === 'configuracao' || fase === 'pronta' ? 'terminais fechados' : 'terminais travados'}
           </span>
         </CardHeader>
         <CardContent className="flex flex-col gap-3">
+          {fila !== null && fila > 0 && (
+            <div className="flex items-center gap-2 rounded-lg border border-amber-500/40 bg-amber-950/30 px-3 py-2 text-xs text-amber-300">
+              <Users className="h-3.5 w-3.5 shrink-0" />
+              <span>
+                Participantes em fila: <b className="font-mono font-semibold tabular-nums">{num(fila)}</b>
+                <span className="text-amber-300/70"> · o tempo acabou, mas quem já estava na fila ainda registra</span>
+              </span>
+            </div>
+          )}
           <div className="flex items-end justify-between gap-3">
             <div>
               <div className="bg-gradient-to-r from-emerald-300 to-cyan-300 bg-clip-text font-mono text-5xl font-semibold leading-none text-transparent tabular-nums">
@@ -115,7 +126,15 @@ export function PainelColeta() {
         <CardHeader>
           <CardTitle>Terminais</CardTitle>
           <span className="text-[11px] text-zinc-500 tabular-nums">
-            <span className="text-emerald-300">{abertas}</span> abertas · {lista.length - abertas} fechadas
+            {fila !== null ? (
+              <>
+                <span className="text-amber-300">{emFila}</span> com fila · {lista.length - emFila} fechadas
+              </>
+            ) : (
+              <>
+                <span className="text-emerald-300">{abertas}</span> abertas · {lista.length - abertas} fechadas
+              </>
+            )}
           </span>
         </CardHeader>
         <CardContent className="flex flex-col gap-1">
@@ -125,10 +144,16 @@ export function PainelColeta() {
               <div key={f.id} className="rounded-lg px-2 py-1.5 transition-colors hover:bg-zinc-900/70">
                 <div className="flex items-center gap-2">
                   <span
-                    className={cn('h-2 w-2 shrink-0 rounded-full', f.aberta && 'animate-pulse')}
+                    className={cn('h-2 w-2 shrink-0 rounded-full', (f.aberta || (fila !== null && f.fila > 0)) && 'animate-pulse')}
                     style={{ background: cor, boxShadow: f.aberta ? `0 0 8px ${cor}` : undefined }}
                   />
                   <span className="flex-1 truncate text-xs text-zinc-200">{f.nome}</span>
+                  {fila !== null &&
+                    (f.fila > 0 ? (
+                      <span className="rounded bg-amber-500/15 px-1.5 font-mono text-[10px] text-amber-300 tabular-nums">fila {num(f.fila)}</span>
+                    ) : (
+                      <span className="rounded bg-zinc-800/80 px-1.5 text-[10px] text-zinc-400">fechada</span>
+                    ))}
                   <span className="font-mono text-[11px] text-zinc-500 tabular-nums">
                     {num(f.total)} <span className="text-zinc-600">/ {num(f.participantes)}</span>
                   </span>

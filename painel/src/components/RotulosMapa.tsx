@@ -96,6 +96,11 @@ function CartaoUnidade({ f, v }: { f: UnidadeTopo; v: Viewport }) {
               </div>
               <span className="w-10 text-right text-[10px] text-zinc-400 tabular-nums">{pct(andamento.cobertura)}</span>
             </div>
+            {fase === 'coleta' && !andamento.aberta && (
+              <div className="mt-1.5 text-[10px]">
+                {andamento.fila > 0 ? <span className="text-amber-300 tabular-nums">fila: {num(andamento.fila)} participantes</span> : <span className="text-zinc-500">terminal fechado</span>}
+              </div>
+            )}
             {fase !== 'coleta' && (
               <div className="mt-1.5 flex items-center justify-between text-[10px]">
                 <StatusDistribuicao andamento={andamento} consolidacao={consolidacao} online={online} />

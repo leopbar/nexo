@@ -1,14 +1,13 @@
 import { Bot, Check, Pause, Play, RotateCcw, Send, ShieldCheck, Layers, Network, Wifi, WifiOff } from 'lucide-react'
 import { motion } from 'motion/react'
-import { useEffect, useState, type ComponentProps } from 'react'
+import { useState, type ComponentProps } from 'react'
 
 import { acelerar, habilitarConsolidacao, iniciarOperacao, pausar, reiniciarTudo, reenviarFalhas, distribuirExtratos } from '../lib/acoes'
 import { NOMES_SERVICOS, SERVICOS } from '../lib/api'
-import { cn, tempo } from '../lib/utils'
-import { FASES, useOperacao, useFaseGeral } from '../store/operacao'
+import { cn, num, tempo } from '../lib/utils'
+import { FASES, useOperacao, useFaseGeral, useFila } from '../store/operacao'
 import { modelosProntos } from './PainelAgentes'
 import { Button } from './ui/button'
-import { Switch } from './ui/switch'
 
 function Etapas() {
   const fase = useFaseGeral()
@@ -114,6 +113,14 @@ function Relogio() {
   const segundo = useOperacao((s) => s.segundo)
   const duracao = useOperacao((s) => s.duracao)
   const fase = useOperacao((s) => s.faseColeta)
+  const fila = useFila()
+  if (fila !== null)
+    return (
+      <div className="flex flex-col items-end leading-none">
+        <span className="font-mono text-lg text-amber-300 tabular-nums">fila: {num(fila)}</span>
+        <span className="text-[10px] uppercase tracking-wider text-zinc-500">participantes</span>
+      </div>
+    )
   const restante = fase === 'coleta' ? duracao - segundo : fase === 'pronta' || fase === 'configuracao' ? duracao : 0
   return (
     <div className="flex flex-col items-end leading-none">
@@ -167,31 +174,9 @@ function Conexoes() {
   )
 }
 
-/** Avança sozinho entre as fases quando o modo automático está ligado. */
-function useAutomacao() {
-  const automatico = useOperacao((s) => s.automatico)
-  const v = useOperacao((s) => s.faseColeta)
-  const a = useOperacao((s) => s.faseConsolidacao)
-  const incompleta = useOperacao((s) => s.distribuicaoIncompleta)
-  const pausado = useOperacao((s) => s.pausado)
-  useEffect(() => {
-    if (!automatico || pausado) return
-    let passo: (() => Promise<unknown>) | null = null
-    if (v === 'fechada' && a === 'aguardando') passo = habilitarConsolidacao
-    else if (v === 'fechada' && a === 'habilitada') passo = distribuirExtratos
-    else if (v === 'distribuindo' && incompleta) passo = reenviarFalhas
-    if (!passo) return
-    const timer = window.setTimeout(passo, 1800)
-    return () => clearTimeout(timer)
-  }, [automatico, pausado, v, a, incompleta])
-}
-
 export function Cabecalho() {
-  const automatico = useOperacao((s) => s.automatico)
-  const definirAutomatico = useOperacao((s) => s.definirAutomatico)
   const abrirAgentes = useOperacao((s) => s.definirAgentesAberto)
   const agentesLigados = useOperacao((s) => s.config.agentes)
-  useAutomacao()
   return (
     <header className="flex h-16 shrink-0 items-center gap-4 border-b border-zinc-900 bg-black/80 px-4 backdrop-blur">
       <div className="flex min-w-0 items-center gap-3">
@@ -207,7 +192,6 @@ export function Cabecalho() {
         <Etapas />
       </div>
       <div className="flex items-center gap-3">
-        <Switch ligado={automatico} aoMudar={definirAutomatico} rotulo="Automático" />
         <Button variant="ghost" size="icon" onClick={() => abrirAgentes(true)} title="Agentes de IA: chave e modelos" className={cn(agentesLigados && 'text-violet-300')}>
           <Bot />
         </Button>

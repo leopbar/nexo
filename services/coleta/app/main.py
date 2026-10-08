@@ -27,7 +27,7 @@ async def ciclo_de_vida(app: FastAPI):
             await conexao.run_sync(Base.metadata.create_all)
     cliente = httpx.AsyncClient(timeout=None, limits=httpx.Limits(max_connections=400, max_keepalive_connections=100))
     sessoes = async_sessionmaker(engine, expire_on_commit=False)
-    agentes = Agentes(sessoes, cliente, config.OPENAI_API_KEY)
+    agentes = Agentes(sessoes, cliente, config.OPENAI_API_KEY, config.OPENAI_BASE_URL)
     await agentes.carregar()
     sistema = SistemaColeta(sessoes, cliente, config.TRANSPORTE_URL, agentes)
     await sistema.limpar_banco()

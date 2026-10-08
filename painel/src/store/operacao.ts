@@ -38,7 +38,6 @@ interface Estado {
   config: ConfigOperacao
   seedMapa: number
   topologia: Topologia
-  automatico: boolean
   escala: number
   pausado: boolean
   viewport: Viewport
@@ -54,6 +53,7 @@ interface Estado {
   unidades: Record<number, AndamentoUnidade>
   checkpoints: Checkpoint[]
   distribuicaoIncompleta: boolean
+  entradaFechada: boolean
 
   faseTransporte: string
   links: Record<number, LinkTransporte>
@@ -70,7 +70,6 @@ interface Estado {
   definirConexao: (origem: Origem, ok: boolean) => void
   definirConfig: (parcial: Partial<ConfigOperacao>) => void
   sortearMapa: () => void
-  definirAutomatico: (v: boolean) => void
   definirRelogio: (parcial: { escala?: number; pausado?: boolean }) => void
   definirViewport: (v: Viewport) => void
   definirAba: (aba: 'coleta' | 'consolidacao') => void
@@ -98,7 +97,6 @@ export const useOperacao = create<Estado>()(
       config: CONFIG_PADRAO,
       seedMapa: 20261006,
       topologia: topologiaDe(CONFIG_PADRAO, 20261006),
-      automatico: true,
       escala: 1,
       pausado: false,
       viewport: { escala: 1, dx: 0, dy: 0 },
@@ -114,6 +112,7 @@ export const useOperacao = create<Estado>()(
       unidades: {},
       checkpoints: [],
       distribuicaoIncompleta: false,
+      entradaFechada: false,
 
       faseTransporte: 'configuracao',
       links: {},
@@ -149,11 +148,12 @@ export const useOperacao = create<Estado>()(
                 unidades: porId(d.unidades),
                 checkpoints: d.checkpoints,
                 agentes: d.agentes ?? get().agentes,
+                entradaFechada: d.entrada_fechada ?? false,
                 ...(m.tipo === 'reiniciado' ? { distribuicaoIncompleta: false } : {}),
               })
               break
             case 'fase':
-              set({ faseColeta: d.fase })
+              set({ faseColeta: d.fase, ...(d.fase !== 'coleta' ? { entradaFechada: false } : {}) })
               if (d.fase === 'coleta') set({ aba: 'coleta' })
               break
             case 'andamento': {
@@ -162,7 +162,7 @@ export const useOperacao = create<Estado>()(
                 const { novos: _novos, ...andamento } = f
                 unidades[f.id] = andamento
               }
-              set({ unidades, segundo: d.segundo, duracao: d.duracao })
+              set({ unidades, segundo: d.segundo, duracao: d.duracao, entradaFechada: d.entrada_fechada ?? false })
               break
             }
             case 'checkpoint':
@@ -265,7 +265,6 @@ export const useOperacao = create<Estado>()(
         set({ config, seedMapa, topologia: topologiaDe(config, seedMapa) })
       },
 
-      definirAutomatico: (automatico) => set({ automatico }),
       definirRelogio: (parcial) => set(parcial),
       definirViewport: (viewport) => set({ viewport }),
       definirAba: (aba) => set({ aba }),
@@ -283,7 +282,7 @@ export const useOperacao = create<Estado>()(
     {
       name: 'nexo-painel',
       version: 1,
-      partialize: (s) => ({ config: s.config, seedMapa: s.seedMapa, automatico: s.automatico }),
+      partialize: (s) => ({ config: s.config, seedMapa: s.seedMapa }),
       merge: (persistido, atual) => {
         const p = persistido as Partial<Estado> | undefined
         const config = normalizarConfig({ ...CONFIG_PADRAO, ...(p?.config ?? {}) })
@@ -316,4 +315,9 @@ export function useFaseGeral(): FaseGeral {
   const v = useOperacao((s) => s.faseColeta)
   const a = useOperacao((s) => s.faseConsolidacao)
   return faseGeral(v, a)
+}
+
+/** Participantes ainda na fila depois do fechamento da entrada; null fora dessa situação. */
+export function useFila(): number | null {
+  return useOperacao((s) => (s.entradaFechada ? Object.values(s.unidades).reduce((t, f) => t + (f.fila ?? 0), 0) : null))
 }

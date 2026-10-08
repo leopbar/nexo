@@ -6,6 +6,8 @@ banco e dividido em pacotes, que só saem quando a distribuição é ordenada.
 
 Com os agentes ligados, quem chega à terminal entra numa fila; a cada lote completo
 um modelo de IA registra por aquele grupo, e os registros entram quando a resposta chega.
+Quando o tempo acaba a entrada fecha (ninguém novo entra), mas quem já está na
+fila ainda registra; cada terminal só trava depois que a fila de todas esvazia.
 """
 
 from __future__ import annotations
@@ -63,7 +65,8 @@ class Terminal:
     rng: random.Random
     contagens: dict[str, Any]
     novos: dict[str, Any]  # registros registrados desde o último andamento publicado
-    fila: int = 0  # participantes aguardando o lote do agente
+    fila: int = 0  # participantes aguardando formar o próximo lote do agente
+    aguardando: int = 0  # participantes na fila que ainda não tiveram o registro registrado
     aberta: bool = False
     manifesto: dict | None = None
     pacotes: list[dict] = field(default_factory=list)
@@ -84,6 +87,7 @@ class Terminal:
             "ausentes": self.participantes - total,
             "contagens": self.contagens,
             "aberta": self.aberta,
+            "fila": self.aguardando,
             "distribuicao": self.distribuicao,
             "pacotes_total": len(self.pacotes),
             "pacotes_confirmados": len(self.confirmados),
@@ -261,6 +265,7 @@ class SistemaColeta:
             for terminal in self.terminais.values():
                 if cfg.agentes:
                     terminal.fila += terminal.ritmo[k]
+                    terminal.aguardando += terminal.ritmo[k]
                     while terminal.fila >= cfg.lote_agentes or (k == intervalos - 1 and terminal.fila > 0):
                         n = min(cfg.lote_agentes, terminal.fila)
                         terminal.fila -= n
@@ -280,9 +285,17 @@ class SistemaColeta:
             if decorrido + 1e-9 >= proximo_checkpoint and k < intervalos - 1:
                 await self._gravar_checkpoint(segundo)
                 proximo_checkpoint += cfg.intervalo_checkpoint_s
-        # Quem entrou na fila antes do fechamento ainda registra: espera os agentes responderem.
+        # Entrada fechada: quem entrou na fila antes do fechamento ainda registra, e o
+        # andamento segue sendo publicado até a última resposta dos agentes.
+        for terminal in self.terminais.values():
+            terminal.aberta = False
         if lotes_agentes:
-            await asyncio.gather(*lotes_agentes)
+            self._publicar_andamento()
+        while not all(t.done() for t in lotes_agentes):
+            await self.relogio.dormir(cfg.intervalo_registro_s)
+            self._publicar_andamento()
+        await asyncio.gather(*lotes_agentes)
+        if lotes_agentes:
             self._publicar_andamento()
         await self._gravar_checkpoint(self.segundo)
         await self._fechar()
@@ -294,7 +307,21 @@ class SistemaColeta:
         for terminal in self.terminais.values():
             unidades.append(terminal.andamento() | {"novos": terminal.novos})
             terminal.novos = ext.contagens_vazias(cfg.num_itens)
-        self.hub.publicar("andamento", {"segundo": self.segundo, "duracao": cfg.duracao_s, "intervalo": cfg.intervalo_registro_s, "unidades": unidades})
+        self.hub.publicar(
+            "andamento",
+            {
+                "segundo": self.segundo,
+                "duracao": cfg.duracao_s,
+                "intervalo": cfg.intervalo_registro_s,
+                "entrada_fechada": self.entrada_fechada,
+                "unidades": unidades,
+            },
+        )
+
+    @property
+    def entrada_fechada(self) -> bool:
+        """Tempo fechado, mas ainda há participantes na fila registrando."""
+        return self.fase == Fase.COLETA and bool(self.terminais) and not any(u.aberta for u in self.terminais.values())
 
     async def _registrar_com_agente(self, terminal: Terminal, n: int) -> None:
         """Um lote de n participantes registrado por um modelo sorteado; o que faltar é sorteado."""
@@ -309,6 +336,7 @@ class SistemaColeta:
         lote = ext.contar(classes, cfg.num_itens)
         ext.acumular(terminal.contagens, lote)
         ext.acumular(terminal.novos, lote)
+        terminal.aguardando -= n
 
     async def _gravar_checkpoint(self, segundo: int) -> None:
         unidades = [
@@ -428,5 +456,6 @@ class SistemaColeta:
             "config": config,
             "unidades": [u.andamento() for u in self.terminais.values()],
             "checkpoints": self.checkpoints,
+            "entrada_fechada": self.entrada_fechada,
             "agentes": self.agentes.estado(),
         }

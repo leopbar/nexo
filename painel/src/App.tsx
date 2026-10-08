@@ -1,5 +1,6 @@
 import { useEffect } from 'react'
 
+import { AvisoColetaFechada } from './components/AvisoColetaFechada'
 import { Avisos } from './components/Avisos'
 import { Cabecalho } from './components/Cabecalho'
 import { Legenda } from './components/Legenda'
@@ -20,6 +21,7 @@ export function App() {
         <section className="relative min-h-[60vh] overflow-hidden md:min-h-0">
           <Mapa />
           <RotulosMapa />
+          <AvisoColetaFechada />
           <Legenda />
         </section>
         <PainelLateral />
