@@ -1,4 +1,4 @@
-__pycache__
-*.db
-.pytest_cache
+**/__pycache__
+**/*.db
+**/.pytest_cache
 tests
