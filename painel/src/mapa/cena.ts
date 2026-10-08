@@ -324,9 +324,9 @@ export class CenaMapa {
           p.corpo.destroy({ children: true })
           this.pacotes.delete(d.envio_id)
         }
-        const cor = COR_RETORNO[d.consolidacao_final] ?? COR_DUPLICADO
+        const cor = COR_RETORNO[d.classificacao] ?? COR_DUPLICADO
         this.pulsos.push({ unidade: f, t0: agora, dur: Math.max(d.latencia, 0.25), cor: hexParaNumero(cor) })
-        if (d.consolidacao_final !== 'ACK') this.clarao(central, cor, 46, 1)
+        if (d.classificacao !== 'ACK') this.clarao(central, cor, 46, 1)
         break
       }
       case 'recusado':
@@ -539,7 +539,7 @@ export class CenaMapa {
     let anel = 0x71717a
     if (s.faseConsolidacao === 'aguardando' || s.faseConsolidacao === 'pronta') anel = 0xf59e0b
     else if (s.faseConsolidacao === 'habilitada') anel = 0x4ade80
-    else if (s.faseConsolidacao === 'consolidacao_final' && s.consolidacao_final) anel = hexParaNumero(corItem(s.consolidacao_final.predominante - 1))
+    else if (s.faseConsolidacao === 'consolidacao_final' && s.consolidacaoFinal) anel = hexParaNumero(corItem(s.consolidacaoFinal.predominante - 1))
     const ritmo = s.faseConsolidacao === 'habilitada' ? 4 : 1.6
     const pulso = 0.5 + 0.5 * Math.sin(t * ritmo)
     g.circle(c.x, c.y, 46 + 6 * pulso).fill({ color: anel, alpha: 0.05 + 0.04 * pulso })
@@ -562,7 +562,7 @@ export class CenaMapa {
       g.circle(f.pos.x, f.pos.y, 15 + 7 * brilho).fill({ color: cor, alpha: 0.07 + 0.2 * brilho })
       g.circle(f.pos.x, f.pos.y, 9.5).fill({ color: 0x050506 })
       g.circle(f.pos.x, f.pos.y, 9.5).stroke({ width: 2.4, color: cor, alpha: 0.95 })
-      if (terminal?.aberta) g.circle(f.pos.x, f.pos.y, 3.6).fill({ color: cor })
+      if (terminal?.aberto) g.circle(f.pos.x, f.pos.y, 3.6).fill({ color: cor })
       else if (terminal) g.rect(f.pos.x - 3, f.pos.y - 3, 6, 6).fill({ color: cor, alpha: 0.7 })
     }
   }

@@ -8,7 +8,7 @@ from app import extrato as ext
 from app.agentes import Agentes, Catalogo, interpretar_resposta, mascarar, montar_prompt
 from app.modelos import Base
 
-CATALOGO = Catalogo(["Semana de 4 dias", "PLR ampliada", "Creche"], ["", "dobra a PLR", ""])
+CATALOGO = Catalogo(["Telemetria", "Inventário", "Manutenção"], ["", "contagem de estoque", ""])
 
 
 @pytest.fixture
@@ -42,7 +42,7 @@ def resposta(texto: str, entrada=100, saida=60):
 def test_prompt_curto_com_catalogo_e_classes():
     prompt = montar_prompt(CATALOGO, 50)
     assert "50 participantes" in prompt
-    assert "1) Semana de 4 dias\n2) PLR ampliada: dobra a PLR\n3) Creche" in prompt
+    assert "1) Telemetria\n2) Inventário: contagem de estoque\n3) Manutenção" in prompt
     assert "V) Vazio" in prompt and "I) Inválido" in prompt
     assert len(prompt) < 450
 

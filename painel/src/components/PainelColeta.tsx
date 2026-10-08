@@ -47,9 +47,9 @@ export function PainelColeta() {
   const registros = lista.reduce((s, f) => s + f.total, 0)
   const taxa = participantes ? registros / participantes : 0
   const progresso = duracao ? Math.min(1, segundo / duracao) : 0
-  const abertas = lista.filter((f) => f.aberta).length
+  const abertos = lista.filter((f) => f.aberto).length
   const fila = useFila()
-  const emFila = fila === null ? 0 : lista.filter((f) => !f.aberta && f.fila > 0).length
+  const emFila = fila === null ? 0 : lista.filter((f) => !f.aberto && f.fila > 0).length
   const cores = new Map(topologia.unidades.map((t) => [t.id, t.cor]))
   const agentesLigados = useOperacao((s) => s.config.agentes)
 
@@ -58,8 +58,8 @@ export function PainelColeta() {
       <div className="flex items-start gap-2 rounded-lg border border-zinc-800 bg-zinc-950 px-3 py-2 text-[11px] text-zinc-400">
         <EyeOff className="mt-0.5 h-3.5 w-3.5 shrink-0 text-zinc-500" />
         <span>
-          Visão do <b className="font-medium text-zinc-200">sistema de coleta</b>: andamentos locais dos terminais. A central não tem acesso a estes números — só aos extratos
-          distribuidos depois do fechamento.
+          Visão do <b className="font-medium text-zinc-200">sistema de coleta</b>: andamento local dos terminais. A central não tem acesso a estes números — só aos extratos
+          distribuídos depois do fechamento.
         </span>
       </div>
 
@@ -81,7 +81,7 @@ export function PainelColeta() {
               <Users className="h-3.5 w-3.5 shrink-0" />
               <span>
                 Participantes em fila: <b className="font-mono font-semibold tabular-nums">{num(fila)}</b>
-                <span className="text-amber-300/70"> · o tempo acabou, mas quem já estava na fila ainda registra</span>
+                <span className="text-amber-300/70"> · o tempo acabou, mas quem já estava na fila ainda é atendido</span>
               </span>
             </div>
           )}
@@ -90,7 +90,7 @@ export function PainelColeta() {
               <div className="bg-gradient-to-r from-emerald-300 to-cyan-300 bg-clip-text font-mono text-5xl font-semibold leading-none text-transparent tabular-nums">
                 {pct(taxa)}
               </div>
-              <div className="mt-1 text-[11px] text-zinc-500">do participantes já registrou</div>
+              <div className="mt-1 text-[11px] text-zinc-500">dos participantes já registraram</div>
             </div>
             <div className="text-right">
               <div className="font-mono text-2xl font-semibold leading-none text-amber-300 tabular-nums">{pct(participantes ? 1 - taxa : 0)}</div>
@@ -103,7 +103,7 @@ export function PainelColeta() {
           </div>
 
           <div className="grid grid-cols-3 gap-2">
-            <Indicador rotulo="Registrantes" valor={num(registros)} cor="text-emerald-300" />
+            <Indicador rotulo="Registros" valor={num(registros)} cor="text-emerald-300" />
             <Indicador rotulo="Participantes" valor={num(participantes)} cor="text-zinc-100" />
             <Indicador rotulo="Sem registro" valor={num(participantes - registros)} cor="text-amber-300" />
           </div>
@@ -128,11 +128,11 @@ export function PainelColeta() {
           <span className="text-[11px] text-zinc-500 tabular-nums">
             {fila !== null ? (
               <>
-                <span className="text-amber-300">{emFila}</span> com fila · {lista.length - emFila} fechadas
+                <span className="text-amber-300">{emFila}</span> com fila · {lista.length - emFila} fechados
               </>
             ) : (
               <>
-                <span className="text-emerald-300">{abertas}</span> abertas · {lista.length - abertas} fechadas
+                <span className="text-emerald-300">{abertos}</span> abertos · {lista.length - abertos} fechados
               </>
             )}
           </span>
@@ -144,15 +144,15 @@ export function PainelColeta() {
               <div key={f.id} className="rounded-lg px-2 py-1.5 transition-colors hover:bg-zinc-900/70">
                 <div className="flex items-center gap-2">
                   <span
-                    className={cn('h-2 w-2 shrink-0 rounded-full', (f.aberta || (fila !== null && f.fila > 0)) && 'animate-pulse')}
-                    style={{ background: cor, boxShadow: f.aberta ? `0 0 8px ${cor}` : undefined }}
+                    className={cn('h-2 w-2 shrink-0 rounded-full', (f.aberto || (fila !== null && f.fila > 0)) && 'animate-pulse')}
+                    style={{ background: cor, boxShadow: f.aberto ? `0 0 8px ${cor}` : undefined }}
                   />
                   <span className="flex-1 truncate text-xs text-zinc-200">{f.nome}</span>
                   {fila !== null &&
                     (f.fila > 0 ? (
                       <span className="rounded bg-amber-500/15 px-1.5 font-mono text-[10px] text-amber-300 tabular-nums">fila {num(f.fila)}</span>
                     ) : (
-                      <span className="rounded bg-zinc-800/80 px-1.5 text-[10px] text-zinc-400">fechada</span>
+                      <span className="rounded bg-zinc-800/80 px-1.5 text-[10px] text-zinc-400">fechado</span>
                     ))}
                   <span className="font-mono text-[11px] text-zinc-500 tabular-nums">
                     {num(f.total)} <span className="text-zinc-600">/ {num(f.participantes)}</span>
@@ -164,13 +164,13 @@ export function PainelColeta() {
                 <div className="mt-1 ml-4 h-1.5 overflow-hidden rounded-full bg-zinc-900">
                   <div
                     className="h-full rounded-full transition-[width] duration-700"
-                    style={{ width: `${f.cobertura * 100}%`, background: cor, opacity: f.aberta ? 1 : 0.45 }}
+                    style={{ width: `${f.cobertura * 100}%`, background: cor, opacity: f.aberto ? 1 : 0.45 }}
                   />
                 </div>
               </div>
             )
           })}
-          {lista.length === 0 && <p className="text-xs text-zinc-600">Nenhuma terminal configurada.</p>}
+          {lista.length === 0 && <p className="text-xs text-zinc-600">Nenhum terminal configurado.</p>}
         </CardContent>
       </Card>
     </div>

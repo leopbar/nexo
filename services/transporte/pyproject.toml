@@ -1,7 +1,7 @@
 [project]
 name = "nexo-transporte"
 version = "1.0.0"
-description = "Rede simulada entre unidades e central"
+description = "Transporte simulado entre unidades e central"
 requires-python = ">=3.12"
 
 [tool.pytest.ini_options]

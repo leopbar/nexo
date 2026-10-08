@@ -1,4 +1,4 @@
-"""Regras puras da central: validação do contrato e critério de predominância."""
+"""Regras puras da central: validação do contrato e item predominante."""
 
 from __future__ import annotations
 
@@ -57,7 +57,7 @@ def total(contagens: Contagens) -> int:
 
 
 def predominancia_por_unidade(por_unidade: list[Contagens], num_itens: int) -> list[int]:
-    """Em quantas unidades cada item teve mais registros válidos (equivalência local conta para todas as equivalentes)."""
+    """Em quantas unidades cada item teve a maior contagem (equivalência local conta para todos os equivalentes)."""
     predominancia = [0] * num_itens
     for contagens in por_unidade:
         maximo = max(contagens["itens"])
@@ -70,9 +70,11 @@ def predominancia_por_unidade(por_unidade: list[Contagens], num_itens: int) -> l
 
 
 def definir_predominante(totais: list[int], predominancia: list[int], semente: str) -> dict[str, Any]:
-    """Maior contagem entre os classificados; equivalência → mais unidades com predominância → seleção auditável pela semente.
+    """Item com a maior contagem entre os registros classificados.
 
-    Retorna o item predominante (1..N) e qual critério decidiu.
+    Em caso de equivalência, prevalece o item predominante em mais unidades; persistindo,
+    uma seleção determinística pela semente, reprodutível em auditoria.
+    Retorna o item predominante (1..N) e qual critério foi usado.
     """
     maximo = max(totais)
     equivalentes = [i + 1 for i, v in enumerate(totais) if v == maximo]
@@ -86,7 +88,7 @@ def definir_predominante(totais: list[int], predominancia: list[int], semente: s
             "predominante": por_unidades[0],
             "equivalencia": "unidades",
             "equivalentes": equivalentes,
-            "detalhe": f"Equivalência em {maximo} registros válidos entre {equivalentes}; prevalece o que predomina em mais unidades ({max_predominancia}).",
+            "detalhe": f"Equivalência em {maximo} registros entre os itens {equivalentes}; prevalece o item predominante em mais unidades ({max_predominancia}).",
         }
 
     restantes = sorted(por_unidades)
@@ -95,5 +97,5 @@ def definir_predominante(totais: list[int], predominancia: list[int], semente: s
         "predominante": selecionado,
         "equivalencia": "selecao",
         "equivalentes": equivalentes,
-        "detalhe": f"Equivalência persistente entre {restantes} (registros e unidades). Seleção com semente 'equivalencia:{semente}' selecionou {selecionado}.",
+        "detalhe": f"Equivalência persistente entre os itens {restantes} (registros e unidades). A seleção com semente 'equivalencia:{semente}' indicou o item {selecionado}.",
     }

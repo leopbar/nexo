@@ -108,10 +108,10 @@ async def test_fila_continua_registrando_depois_do_fechamento():
     await registrar_ate_fechar(sistema)
 
     depois = [p for p in andamentos if p["entrada_fechada"]]
-    assert len(depois) >= 2  # o andamento continuou saindo com os entrada fechada
+    assert len(depois) >= 2  # o andamento continuou saindo com a entrada fechada
     filas = [sum(f["fila"] for f in p["unidades"]) for p in depois]
     assert filas[0] > 0 and filas == sorted(filas, reverse=True)
-    assert all(not f["aberta"] for p in depois for f in p["unidades"])
+    assert all(not f["aberto"] for p in depois for f in p["unidades"])
     assert sum(f["fila"] for f in andamentos[-1]["unidades"]) == 0
     assert all(u.aguardando == 0 for u in sistema.terminais.values())
     assert all(u.contagens["itens"][0] == u.registros_previstos for u in sistema.terminais.values())

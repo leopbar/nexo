@@ -1,8 +1,8 @@
 """Operação completa ponta a ponta, com os três serviços em processos separados.
 
-Sobe coleta, rede e consolidação com SQLite em diretório temporário, roda uma
-operação curta e acelerada com falhas de rede ligadas, e verifica que a consolidação final
-da central bate registro a registro com os extratos dos terminais.
+Sobe coleta, transporte e consolidação com SQLite em diretório temporário, roda uma
+operação curta e acelerada com falhas de rede ligadas, e verifica que a consolidação
+final da central bate registro a registro com os extratos dos terminais.
 
 Uso: python scripts/e2e.py   (com as dependências de services/*/requirements.txt)
 """
@@ -106,22 +106,22 @@ def main() -> None:
                     if cliente.post(f"{URL['coleta']}/reenviar").status_code == 200:
                         print("reenviando falhas:", falhas)
                 if time.monotonic() - inicio > 240:
-                    raise SystemExit("tempo esgotado esperando o consolidacao_final")
+                    raise SystemExit("tempo esgotado esperando a consolidação final")
                 time.sleep(0.5)
 
-            consolidacao_final = consolidacao["consolidacao_final"]
+            final = consolidacao["consolidacao_final"]
             esperado = {"itens": [0] * 5, "vazios": 0, "invalidos": 0}
             for f in unidades:
                 b = cliente.get(f"{URL['coleta']}/terminais/{f['id']}/extrato").json()["contagens"]
                 esperado["itens"] = [a + c for a, c in zip(esperado["itens"], b["itens"])]
                 esperado["vazios"] += b["vazios"]
                 esperado["invalidos"] += b["invalidos"]
-            rede = cliente.get(f"{URL['transporte']}/estado").json()["estatisticas"]
+            transporte = cliente.get(f"{URL['transporte']}/estado").json()["estatisticas"]
             duplicados = sum(1 for e in consolidacao["log"] if e["tipo"] == "duplicado")
             rejeitados = sum(1 for e in consolidacao["log"] if e["tipo"] == "rejeitado")
-            print("rede:", rede, f"| duplicados descartados: {duplicados} | rejeitados: {rejeitados}")
-            print("consolidacao_final:", consolidacao_final["totais"], "predominante:", consolidacao_final["predominante"], "equivalencia:", consolidacao_final["equivalencia"])
-            assert consolidacao_final["totais"] == esperado, (consolidacao_final["totais"], esperado)
+            print("transporte:", transporte, f"| duplicados descartados: {duplicados} | rejeitados: {rejeitados}")
+            print("consolidação final:", final["totais"], "predominante:", final["predominante"], "equivalência:", final["equivalencia"])
+            assert final["totais"] == esperado, (final["totais"], esperado)
             print(f"OK — central bate registro a registro com os terminais ({time.monotonic() - inicio:.1f}s reais)")
     finally:
         for p in processos:

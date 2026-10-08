@@ -15,11 +15,11 @@ Contagem = Annotated[int, Field(ge=0)]
 
 
 class Contagens(BaseModel):
-    """Registros agregados: válidos por item, vazios e invalidos."""
+    """Registros agregados: classificados por item, vazios e inválidos."""
 
     model_config = ConfigDict(extra="forbid")
 
-    itens: list[Contagem] = Field(min_length=1, description="Registros válidos por item, na ordem 1..N.")
+    itens: list[Contagem] = Field(min_length=1, description="Registros classificados por item, na ordem 1..N.")
     vazios: Contagem
     invalidos: Contagem
 

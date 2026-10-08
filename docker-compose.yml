@@ -1,8 +1,10 @@
-# Nexo
+# Nexo — processamento distribuído de registros
 #
 # Dois sistemas realmente separados (coleta e consolidação), cada um com seu
-# PostgreSQL em rede própria, uma rede simulada entre eles e um painel que só
-# comanda e observa. Nenhum sistema enxerga o banco do outro.
+# PostgreSQL em rede própria, um transporte simulado entre eles e um painel que
+# só comanda e observa. Nenhum sistema enxerga o banco do outro.
+
+name: nexo
 
 services:
   coleta-db:
@@ -71,11 +73,11 @@ services:
     ports: ["${PAINEL_PORTA:-8090}:80"]
 
 networks:
-  banco-coleta: {}   # só coleta ⇄ seu banco
+  banco-coleta: {}        # só coleta ⇄ seu banco
   banco-consolidacao: {}  # só consolidação ⇄ seu banco
-  unidades: {}         # distribuidor das unidades ⇄ rede simulada
-  central: {}          # rede simulada ⇄ consolidação
-  controle: {}        # painel ⇄ os três serviços (comandos e eventos)
+  unidades: {}            # distribuidor das unidades ⇄ transporte simulado
+  central: {}             # transporte simulado ⇄ consolidação
+  controle: {}            # painel ⇄ os três serviços (comandos e eventos)
 
 volumes:
   coleta-dados: {}

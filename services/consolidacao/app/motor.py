@@ -20,7 +20,7 @@ from . import regras
 from .contrato import Manifesto, Pacote, Resposta
 from .esquemas import ComandoRelogio, ConfigConsolidacao
 from .eventos import Hub
-from .modelos import EventoLog, ManifestoRecebido, PacoteRecebido, ConsolidacaoFinal
+from .modelos import ConsolidacaoFinal, EventoLog, ManifestoRecebido, PacoteRecebido
 from .relogio import RelogioSimulado
 
 log = structlog.get_logger("consolidacao")
@@ -306,7 +306,7 @@ class SistemaConsolidacao:
         self.hub.publicar("unidade", unidade.resumo())
 
     async def _finalizar(self) -> None:
-        """Todas as unidades validadas: aplica o critério de predominância a partir do que foi gravado."""
+        """Todas as unidades validadas: define o item predominante a partir do que foi gravado."""
         assert self.config
         num = self.config.num_itens
         por_unidade: dict[int, dict] = {f: regras.contagens_vazias(num) for f in self.unidades}
@@ -317,16 +317,16 @@ class SistemaConsolidacao:
         for contagens in por_unidade.values():
             regras.acumular(totais, contagens)
 
-        validos = sum(totais["itens"])
+        classificados = sum(totais["itens"])
         predominancia = regras.predominancia_por_unidade(list(por_unidade.values()), num)
         semente = f"{self.config.seed}:{self.config.operacao_id}" if self.config.seed is not None else self.config.operacao_id
         decisao = regras.definir_predominante(totais["itens"], predominancia, semente)
         consolidacao_final = {
             "operacao_id": self.config.operacao_id,
             "totais": totais,
-            "validos": validos,
+            "classificados": classificados,
             "total_registros": regras.total(totais),
-            "percentuais": [round(v / validos, 6) if validos else 0 for v in totais["itens"]],
+            "percentuais": [round(v / classificados, 6) if classificados else 0 for v in totais["itens"]],
             "predominancia_por_unidade": predominancia,
             "por_unidade": {str(k): v for k, v in por_unidade.items()},
             **decisao,

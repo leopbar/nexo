@@ -1,9 +1,9 @@
-"""Agentes de IA que registram pelos participantes, em lotes, usando modelos da OpenAI.
+"""Agentes de IA que geram os registros dos participantes, em lotes, usando modelos da OpenAI.
 
-Cada chamada representa um lote de participantes: o modelo recebe o catálogo e devolve
-um registro por participante. O modelo de cada lote é sorteado entre os ativos no
+Cada chamada representa um lote de participantes: o modelo recebe o catálogo de itens e
+devolve um código por participante. O modelo de cada lote é sorteado entre os ativos no
 momento da chamada, então desativar um modelo o tira da coleta na hora.
-Qualquer falha devolve None e o terminal sorteia aquele lote como no modo comum.
+Qualquer falha devolve None e o terminal gera aquele lote por amostragem, como no modo comum.
 """
 
 from __future__ import annotations
@@ -95,14 +95,14 @@ class Catalogo:
 def montar_prompt(catalogo: Catalogo, n: int) -> str:
     num = len(catalogo.titulos)
     return (
-        f"Você representa {n} participantes diferentes de uma empresa. Cada um avalia o catálogo da coleta interna "
-        f"e classifica o próprio registro.\n{catalogo.texto()}\nV) Vazio\nI) Inválido\n"
-        f"Responda só com {n} registros separados por vírgula, um por participante, usando 1-{num}, V ou I."
+        f"Você simula {n} participantes distintos de uma operação. Para cada um, gere um registro "
+        f"classificado em uma categoria do catálogo:\n{catalogo.texto()}\nV) Vazio\nI) Inválido\n"
+        f"Responda só com {n} códigos separados por vírgula, um por participante, usando 1-{num}, V ou I."
     )
 
 
 def interpretar_resposta(texto: str, n: int, num_itens: int) -> list[int]:
-    """Extrai até n registros válidos; o que não for item, V ou I é ignorado."""
+    """Extrai até n códigos reconhecidos; o que não for item, V ou I é ignorado."""
     registros: list[int] = []
     for token in re.findall(r"\d+|[VvIi]", texto):
         if token in "Vv":
@@ -198,7 +198,7 @@ class Agentes:
 
     @property
     def prontos(self) -> list[str]:
-        """Modelos que podem registrar agora: ativos e, se a conta já foi verificada, disponíveis."""
+        """Modelos que podem gerar registros agora: ativos e, se a conta já foi verificada, disponíveis."""
         return [m.id for m in CATALOGO if m.id in self.ativos and (self.disponiveis is None or m.id in self.disponiveis)]
 
     def estado(self) -> dict[str, Any]:
@@ -232,7 +232,7 @@ class Agentes:
         return {"authorization": f"Bearer {self.chave}"}
 
     async def gerar_lote(self, catalogo: Catalogo, n: int) -> tuple[str, list[int]] | None:
-        """Sorteia um modelo ativo e pede um registro por participante. None se não houver como."""
+        """Sorteia um modelo ativo e pede um código por participante. None se não houver como."""
         if not self.chave or not self.prontos:
             return None
         modelo = POR_ID[self.rng.choice(self.prontos)]

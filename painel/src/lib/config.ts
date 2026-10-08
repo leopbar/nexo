@@ -33,14 +33,14 @@ export interface ConfigOperacao {
 }
 
 export const NOMES_ITENS = [
-  'Semana de 4 dias',
-  'Home office híbrido',
-  'PLR ampliada',
-  'Novo plano de saúde',
-  'Bolsa de capacitação',
-  'Creche corporativa',
-  'Previdência complementar',
-  'Vale-cultura',
+  'Telemetria',
+  'Inventário',
+  'Logística',
+  'Manutenção',
+  'Qualidade',
+  'Suprimentos',
+  'Atendimento',
+  'Faturamento',
 ]
 
 export const CONFIG_PADRAO: ConfigOperacao = {

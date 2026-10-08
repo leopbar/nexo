@@ -1,4 +1,4 @@
-"""API da rede simulada."""
+"""API do transporte simulado."""
 
 from __future__ import annotations
 
@@ -26,7 +26,7 @@ async def ciclo_de_vida(app: FastAPI):
     await cliente.aclose()
 
 
-app = FastAPI(title="Rede simulada", version="1.0.0", lifespan=ciclo_de_vida)
+app = FastAPI(title="Transporte simulado", version="1.0.0", lifespan=ciclo_de_vida)
 app.add_middleware(CORSMiddleware, allow_origins=["*"], allow_methods=["*"], allow_headers=["*"])
 
 

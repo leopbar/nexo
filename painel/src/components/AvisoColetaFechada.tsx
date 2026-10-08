@@ -2,7 +2,7 @@ import { AnimatePresence, motion } from 'motion/react'
 
 import { useFila } from '../store/operacao'
 
-/** Sobre o mapa: tempo esgotado, entrada fechada, mas a fila ainda está registrando. */
+/** Sobre o mapa: tempo esgotado, entrada fechada, mas a fila ainda está sendo atendida. */
 export function AvisoColetaFechada() {
   const fila = useFila()
   return (

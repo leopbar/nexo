@@ -1,4 +1,4 @@
-"""Recepção na central: fase, validação, idempotência, verificação e consolidacao_final."""
+"""Recepção na central: fase, validação, idempotência, verificação e consolidação final."""
 
 import hashlib
 import hmac

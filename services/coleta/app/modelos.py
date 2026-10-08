@@ -9,7 +9,7 @@ class Base(DeclarativeBase):
 
 
 class Registro(Base):
-    """Um registro registrado no terminal. classe: 1..N item, 0 vazio, -1 invalido."""
+    """Um registro gravado no terminal. classe: 1..N item, 0 vazio, -1 inválido."""
 
     __tablename__ = "registros"
     __table_args__ = (Index("ix_registros_unidade_segundo", "unidade_id", "segundo", "id"),)

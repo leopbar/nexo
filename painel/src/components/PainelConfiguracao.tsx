@@ -66,7 +66,7 @@ function GrupoAgentes() {
         <span className="text-[10px] text-zinc-600">sistema de coleta</span>
       </CardHeader>
       <CardContent className="flex flex-col gap-2.5">
-        <Switch ligado={config.agentes} aoMudar={(agentes) => definir({ agentes })} rotulo="Participantes registram por agentes de IA" />
+        <Switch ligado={config.agentes} aoMudar={(agentes) => definir({ agentes })} rotulo="Registros gerados por agentes de IA" />
         {config.agentes && (
           <>
             <div className="grid grid-cols-2 gap-x-3">
@@ -79,7 +79,7 @@ function GrupoAgentes() {
               </div>
             </div>
             {pendencia && <p className="text-[11px] text-amber-300">Para iniciar, {pendencia}.</p>}
-            <p className="text-[11px] text-zinc-600">Vazios e inválidos ficam a cargo dos modelos; se uma chamada falhar, aquele lote é sorteado com os percentuais acima.</p>
+            <p className="text-[11px] text-zinc-600">Vazios e inválidos ficam a cargo dos modelos; se uma chamada falhar, aquele lote é gerado por amostragem com os percentuais acima.</p>
           </>
         )}
         <Button variant="secondary" size="sm" onClick={() => abrir(true)}>
@@ -103,7 +103,7 @@ export function PainelConfiguracao() {
       <div className="px-1">
         <h2 className="text-sm font-medium text-zinc-200">Configuração da operação</h2>
         <p className="mt-0.5 text-xs text-zinc-500">
-          ≈ {num(participantesMedio)} participantes, ≈ {num(participantesMedio * coberturaMedia)} registrantes esperados. Tudo é editável até iniciar.
+          ≈ {num(participantesMedio)} participantes, ≈ {num(participantesMedio * coberturaMedia)} registros esperados. Tudo é editável até iniciar.
         </p>
       </div>
 
@@ -115,7 +115,7 @@ export function PainelConfiguracao() {
         <Campo rotulo="Cobertura mín." chave="coberturaMin" min={1} max={100} sufixo="%" />
         <Campo rotulo="Cobertura máx." chave="coberturaMax" min={1} max={100} sufixo="%" />
         <Campo rotulo="Registro vazio" chave="probVazio" min={0} max={50} passo={0.5} sufixo="%" />
-        <Campo rotulo="Registro invalido" chave="probInvalido" min={0} max={50} passo={0.5} sufixo="%" />
+        <Campo rotulo="Registro inválido" chave="probInvalido" min={0} max={50} passo={0.5} sufixo="%" />
         <Campo rotulo="Duração" chave="duracao" min={10} max={3600} passo={10} sufixo="s" />
         <Campo rotulo="Registro e atualização" chave="intervaloRegistro" min={0.5} max={10} passo={0.5} sufixo="s" />
         <Campo rotulo="Checkpoint" chave="intervaloCheckpoint" min={1} max={120} sufixo="s" />
@@ -133,7 +133,7 @@ export function PainelConfiguracao() {
         <Campo rotulo="Máx. tentativas" chave="maxTentativas" min={1} max={20} />
       </Grupo>
 
-      <Grupo titulo="Falhas da rede" sistema="rede simulada">
+      <Grupo titulo="Falhas da rede" sistema="transporte simulado">
         <Campo rotulo="Perda de pacote" chave="taxaPerda" min={0} max={60} passo={0.5} sufixo="%" />
         <Campo rotulo="Corrupção" chave="taxaCorrupcao" min={0} max={60} passo={0.5} sufixo="%" />
         <Campo rotulo="Atraso extremo" chave="taxaAtrasoExtremo" min={0} max={60} passo={0.5} sufixo="%" />

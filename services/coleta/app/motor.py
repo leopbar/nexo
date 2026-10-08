@@ -1,15 +1,14 @@
 """Sistema de coleta: terminais autônomos das unidades.
 
-Enquanto a coleta está aberta, nenhuma terminal tem canal com a central. Ao fim do
+Enquanto a coleta está aberta, nenhum terminal tem canal com a central. Ao fim do
 tempo os terminais travam, o extrato é calculado a partir dos registros gravados no
 banco e dividido em pacotes, que só saem quando a distribuição é ordenada.
 
-Com os agentes ligados, quem chega à terminal entra numa fila; a cada lote completo
-um modelo de IA registra por aquele grupo, e os registros entram quando a resposta chega.
+Com os agentes ligados, quem chega ao terminal entra numa fila; a cada lote completo
+um modelo de IA gera os registros daquele grupo, e eles entram quando a resposta chega.
 Quando o tempo acaba a entrada fecha (ninguém novo entra), mas quem já está na
-fila ainda registra; cada terminal só trava depois que a fila de todas esvazia.
+fila ainda é atendido; cada terminal só trava depois que a fila de todos esvazia.
 """
-
 from __future__ import annotations
 
 import asyncio
@@ -29,9 +28,9 @@ from . import extrato as ext
 from .agentes import Agentes, Catalogo
 from .esquemas import ComandoRelogio, ConfigColeta
 from .eventos import Hub
-from .modelos import Extrato, Checkpoint, PacoteGerado, Registro
-from .relogio import RelogioSimulado
 from .distribuidor import Distribuidor
+from .modelos import Checkpoint, Extrato, PacoteGerado, Registro
+from .relogio import RelogioSimulado
 
 log = structlog.get_logger("coleta")
 
@@ -64,10 +63,10 @@ class Terminal:
     ritmo: list[int]
     rng: random.Random
     contagens: dict[str, Any]
-    novos: dict[str, Any]  # registros registrados desde o último andamento publicado
+    novos: dict[str, Any]  # registros gravados desde o último andamento publicado
     fila: int = 0  # participantes aguardando formar o próximo lote do agente
-    aguardando: int = 0  # participantes na fila que ainda não tiveram o registro registrado
-    aberta: bool = False
+    aguardando: int = 0  # participantes na fila que ainda não tiveram o registro gravado
+    aberto: bool = False
     manifesto: dict | None = None
     pacotes: list[dict] = field(default_factory=list)
     manifesto_confirmado: bool = False
@@ -86,7 +85,7 @@ class Terminal:
             "cobertura": round(total / self.participantes, 4) if self.participantes else 0,
             "ausentes": self.participantes - total,
             "contagens": self.contagens,
-            "aberta": self.aberta,
+            "aberto": self.aberto,
             "fila": self.aguardando,
             "distribuicao": self.distribuicao,
             "pacotes_total": len(self.pacotes),
@@ -185,7 +184,7 @@ class SistemaColeta:
         self._exigir(Fase.PRONTA, acao="iniciar coleta")
         self.inicio = self.relogio.agora()
         for terminal in self.terminais.values():
-            terminal.aberta = True
+            terminal.aberto = True
         self._mudar_fase(Fase.COLETA)
         self._disparar(self._conduzir_coleta())
         return self.retrato()
@@ -194,7 +193,7 @@ class SistemaColeta:
         terminal = self.terminais.get(unidade_id)
         if terminal is None:
             raise NaoEncontrado(f"unidade {unidade_id} não existe")
-        if self.fase != Fase.COLETA or not terminal.aberta:
+        if self.fase != Fase.COLETA or not terminal.aberto:
             raise ComandoInvalido("Registro rejeitado: o terminal está travado.")
         assert self.config
         classe = ext.interpretar_digitado(digitado, self.config.num_itens)
@@ -212,10 +211,10 @@ class SistemaColeta:
     async def reenviar(self) -> dict:
         self._exigir(Fase.DISTRIBUINDO, acao="reenviar falhas")
         if self._distribuicao is not None and not self._distribuicao.done():
-            raise ComandoInvalido("Reenvio recusada: a distribuição ainda está em andamento.")
+            raise ComandoInvalido("Reenvio recusado: a distribuição ainda está em andamento.")
         falhas = [u for u in self.terminais.values() if u.distribuicao == "falha"]
         if not falhas:
-            raise ComandoInvalido("Reenvio recusada: nenhuma unidade com falha.")
+            raise ComandoInvalido("Reenvio recusado: nenhuma unidade com falha.")
         self._distribuicao = self._disparar(self._conduzir_distribuicao(falhas))
         return self.retrato()
 
@@ -285,10 +284,10 @@ class SistemaColeta:
             if decorrido + 1e-9 >= proximo_checkpoint and k < intervalos - 1:
                 await self._gravar_checkpoint(segundo)
                 proximo_checkpoint += cfg.intervalo_checkpoint_s
-        # Entrada fechada: quem entrou na fila antes do fechamento ainda registra, e o
+        # Entrada fechada: quem entrou na fila antes do fechamento ainda é atendido, e o
         # andamento segue sendo publicado até a última resposta dos agentes.
         for terminal in self.terminais.values():
-            terminal.aberta = False
+            terminal.aberto = False
         if lotes_agentes:
             self._publicar_andamento()
         while not all(t.done() for t in lotes_agentes):
@@ -320,11 +319,11 @@ class SistemaColeta:
 
     @property
     def entrada_fechada(self) -> bool:
-        """Tempo fechado, mas ainda há participantes na fila registrando."""
-        return self.fase == Fase.COLETA and bool(self.terminais) and not any(u.aberta for u in self.terminais.values())
+        """Tempo esgotado, mas ainda há participantes na fila sendo atendidos."""
+        return self.fase == Fase.COLETA and bool(self.terminais) and not any(u.aberto for u in self.terminais.values())
 
     async def _registrar_com_agente(self, terminal: Terminal, n: int) -> None:
-        """Um lote de n participantes registrado por um modelo sorteado; o que faltar é sorteado."""
+        """Um lote de n participantes gerado por um modelo sorteado; o que faltar é amostrado localmente."""
         cfg = self.config
         assert cfg
         resposta = await self.agentes.gerar_lote(self.catalogo, n)
@@ -354,7 +353,7 @@ class SistemaColeta:
 
     async def _fechar(self) -> None:
         for terminal in self.terminais.values():
-            terminal.aberta = False
+            terminal.aberto = False
         self.hub.publicar("terminais_travados", {"segundo": self.segundo})
         await self._gerar_extratos()
         self._mudar_fase(Fase.FECHADA)
@@ -366,8 +365,8 @@ class SistemaColeta:
         assert cfg
         classes: dict[int, list[int]] = defaultdict(list)
         async with self.sessoes() as sessao:
-            consolidacao_final = await sessao.stream(select(Registro.unidade_id, Registro.classe).order_by(Registro.unidade_id, Registro.segundo, Registro.id))
-            async for unidade_id, classe in consolidacao_final:
+            linhas = await sessao.stream(select(Registro.unidade_id, Registro.classe).order_by(Registro.unidade_id, Registro.segundo, Registro.id))
+            async for unidade_id, classe in linhas:
                 classes[unidade_id].append(classe)
             agregados = await sessao.execute(select(Registro.unidade_id, Registro.classe, func.count()).group_by(Registro.unidade_id, Registro.classe))
             verificacao: dict[int, dict] = defaultdict(lambda: ext.contagens_vazias(cfg.num_itens))
@@ -442,10 +441,10 @@ class SistemaColeta:
 
     async def extrato(self, unidade_id: int) -> dict:
         async with self.sessoes() as sessao:
-            registro = await sessao.get(Extrato, unidade_id)
-        if registro is None:
+            extrato = await sessao.get(Extrato, unidade_id)
+        if extrato is None:
             raise NaoEncontrado("extrato ainda não gerado")
-        return {"unidade_id": registro.unidade_id, "total_registros": registro.total_registros, "participantes": registro.participantes, "contagens": registro.contagens, "hash": registro.hash, "manifesto": registro.manifesto}
+        return {"unidade_id": extrato.unidade_id, "total_registros": extrato.total_registros, "participantes": extrato.participantes, "contagens": extrato.contagens, "hash": extrato.hash, "manifesto": extrato.manifesto}
 
     def retrato(self) -> dict:
         config = self.config.model_dump(exclude={"unidades": {"__all__": {"chave_hmac"}}}) if self.config else None

@@ -1,4 +1,4 @@
-/** Uma cor vibrante e fixa por item; cinza para vazios, vermelho apagado para invalidos. */
+/** Uma cor vibrante e fixa por item; cinza para vazios, vermelho apagado para inválidos. */
 export const CORES_ITENS = ['#8b5cf6', '#06b6d4', '#f59e0b', '#ec4899', '#a3e635', '#f97316', '#0ea5e9', '#10b981']
 export const COR_VAZIO = '#a1a1aa'
 export const COR_INVALIDO = '#b4534f'
@@ -18,7 +18,7 @@ export function corItem(indice: number): string {
   return CORES_ITENS[indice % CORES_ITENS.length]
 }
 
-/** Índice de opção: 0..N-1 itens, N vazios, N+1 invalidos. */
+/** Índice de classe: 0..N-1 itens, N vazios, N+1 inválidos. */
 export function corClasse(indice: number, numItens: number): string {
   if (indice < numItens) return corItem(indice)
   return indice === numItens ? COR_VAZIO : COR_INVALIDO

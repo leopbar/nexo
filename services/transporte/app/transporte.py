@@ -1,4 +1,4 @@
-"""Rede simulada entre unidades e central.
+"""Transporte simulado entre unidades e central.
 
 Um proxy pequeno: cada unidade tem sua tubulação, cujo comprimento é a latência
 base. A rede é que é lenta — nem a unidade nem a central fingem atrasos. Aqui se
@@ -185,7 +185,7 @@ class SistemaTransporte:
 
         self.estatisticas["entregues"] += 1
         retorno = max(0.3, link.latencia_base * cfg.fator_retorno)
-        self.hub.publicar("retorno", info | {"consolidacao_final": _classificar(resposta), "status": resposta.status_code, "latencia": round(retorno, 3)})
+        self.hub.publicar("retorno", info | {"classificacao": _classificar(resposta), "status": resposta.status_code, "latencia": round(retorno, 3)})
         await self.relogio.dormir(retorno)
         return Response(content=resposta.content, status_code=resposta.status_code, media_type="application/json")
 

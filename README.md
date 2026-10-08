@@ -1,16 +1,21 @@
 # Nexo
 
-Uma operação corporativa em tempo real: 10 unidades registram em 5 itens da central e só
-depois distribuem seus extratos, em pacotes, por tubulações individuais até a consolidação
-central. O objetivo didático é deixar visível a separação entre **quem coleta** (as
-unidades) e **quem totaliza** (a central).
+Plataforma de processamento distribuído de registros, capaz de coletar, transmitir,
+consolidar e observar dados sob condições normais ou anômalas, preservando o histórico de
+todas as transformações e ocorrências.
+
+Em tempo real, 10 unidades coletam registros classificados em 5 itens e só depois
+distribuem seus extratos, em pacotes, por tubulações individuais até a consolidação na
+central. O objetivo é deixar visível a separação entre **quem coleta** (as unidades) e
+**quem consolida** (a central), e o que acontece com os dados quando o caminho entre elas
+falha.
 
 ```
  painel (React + PixiJS) ── só comanda e observa (HTTP + WebSocket) ──┐
                                                                        │
  ┌───────────────┐     ┌─────────────────┐     ┌────────────────┐      │
- │ coleta       │────▶│ rede simulada   │────▶│ consolidação       │◀─────┘
- │ (unidades)     │◀────│ latência, perda,│◀────│ (central)       │
+ │ coleta        │────▶│ transporte      │────▶│ consolidação   │◀─────┘
+ │ (unidades)    │◀────│ latência, perda,│◀────│ (central)      │
  │ PostgreSQL A  │ ACK │ corrupção, queda│ ACK │ PostgreSQL B   │
  └───────────────┘     └─────────────────┘     └────────────────┘
 ```
@@ -57,9 +62,9 @@ Painel em http://localhost:5173 (o Vite faz proxy de `/api/<serviço>` para cada
 ## Fases
 
 | # | Fase | Coleta (unidades) | Consolidação (central) |
-|---|------|-------------------|-------------------|
+|---|------|-------------------|------------------------|
 | 1 | Configuração | `configuracao` → `pronta` | `configuracao` → `pronta` |
-| 2 | Coleta | `coleta`: registra registros a cada segundo | `aguardando`: recusa tudo (503) |
+| 2 | Coleta | `coleta`: grava registros a cada segundo | `aguardando`: recusa tudo (503) |
 | 3 | Fechamento | `fechada`: terminais travados, extrato e pacotes gerados do banco | `aguardando` |
 | 4 | Distribuição e consolidação | `distribuindo`: manifesto + pacotes com ACK | `habilitada`: valida, soma, verifica |
 | 5 | Consolidação final | `distribuida` | `consolidacao_final`: maior contagem + equivalência |
@@ -77,55 +82,59 @@ são manuais: nada avança sem um clique no painel.
 - **Contrato, não código compartilhado.** [`contracts/`](contracts/README.md) define
   manifesto, pacote e ACK/NACK em Pydantic e publica JSON Schemas versionados. Cada
   serviço tem seus próprios modelos e um teste que os compara ao esquema publicado.
-- **A rede é que é lenta.** Nem a unidade nem a central fingem atrasos: o serviço `transporte`
-  aplica a latência da tubulação (3 s na unidade mais próxima, 10 s na mais distante,
-  mais variação), perda, corrupção (troca um dígito do corpo), atraso extremo e quedas de
-  link. Um pacote perdido deixa a conexão pendurada; a unidade só descobre pelo timeout.
+- **Simulação de anomalias no transporte.** Nem a unidade nem a central fingem atrasos:
+  o serviço `transporte` aplica a latência da tubulação (3 s na unidade mais próxima,
+  10 s na mais distante, mais variação), perda, corrupção (troca um dígito do corpo),
+  atraso extremo e quedas de link. Um pacote perdido deixa a conexão pendurada; a unidade
+  só descobre pelo timeout.
 - **Entrega garantida.** Timeout de ACK, reenvio com backoff exponencial e limite
   de tentativas. Queda de link não consome tentativas (a unidade espera reconectar). Ids
   de pacote são estáveis (UUIDv5 de operação/unidade/lote), então a central descarta
   duplicados e reenvios nunca somam duas vezes.
 - **Validação.** Checksum SHA-256 e assinatura HMAC por unidade em cada pacote;
   manifesto assinado com o hash do extrato. Ao receber o último lote, a central recalcula
-  o hash e verifica os totais antes de marcar a unidade como processada.
+  o hash e verifica os totais antes de marcar a unidade como validada.
+- **Rastreabilidade.** Tudo o que a central recebe, aceita, rejeita ou descarta como
+  duplicado vira um evento gravado no log da consolidação, com o motivo.
 - **Relógios independentes.** Cada serviço tem seu relógio de simulação; pausar e
   acelerar (1x, 2x, 5x) é o mesmo comando enviado aos três e ao relógio de animação do
   painel. Timeouts e latências são medidos em tempo simulado.
 - **Painel só observa.** Pontos e pacotes animados são desenhados a partir de eventos
   (`andamento`, `transito`, `perdido`, `corrompido`, `retorno`...), nunca carregam registros.
-- **Extrato do banco.** O extrato de terminal é calculado a partir dos registros gravados (e
-  validado contra uma agregação SQL), não dos contadores em memória.
+- **Extrato do banco.** O extrato de cada terminal é calculado a partir dos registros
+  gravados (e verificado contra uma agregação SQL), não dos contadores em memória.
 
 ## Agentes de IA
 
-Com **Agentes de IA** ligado na configuração, os registros deixam de ser sorteados e passam
-a vir de modelos da OpenAI. O ritmo de chegada aos terminais continua o mesmo; quem chega
-entra numa fila e, a cada lote de participantes (padrão 50), um modelo sorteado entre os
-ligados recebe o catálogo e devolve um registro por participante, inclusive vazio (`V`) e
-inválido (`I`). O prompt tem cerca de 100 tokens e a resposta é só a lista de registros.
+Com **Agentes de IA** ligado na configuração, os registros deixam de ser amostrados
+localmente e passam a vir de modelos da OpenAI. O ritmo de chegada aos terminais continua
+o mesmo; quem chega entra numa fila e, a cada lote de participantes (padrão 50), um
+modelo sorteado entre os ligados recebe o catálogo de itens e devolve um código por
+participante, inclusive vazio (`V`) e inválido (`I`). O prompt tem cerca de 100 tokens e
+a resposta é só a lista de códigos.
 
 - A chave e os modelos ficam no botão do robô no cabeçalho. A chave é guardada no banco
   da coleta (ou vem de `OPENAI_API_KEY`) e nunca volta inteira para o painel.
 - O esforço de raciocínio é sempre o mínimo que cada modelo aceita (`none`, depois
   `minimal`, depois `low`).
 - Desligar um modelo o tira da coleta na hora, mesmo com a operação em andamento.
-- Se uma chamada falhar ou vier incompleta, os registros que faltam são sorteados como no
-  modo comum.
-- Quando o tempo acaba a entrada fecha, mas quem já estava na fila ainda registra. O mapa
-  mostra "Coleta fechada", o relógio e o card de cobertura mostram quantos
+- Se uma chamada falhar ou vier incompleta, os registros que faltam são gerados por
+  amostragem, como no modo comum.
+- Quando o tempo acaba a entrada fecha, mas quem já estava na fila ainda é atendido. O
+  mapa mostra "Coleta fechada", o relógio e o card de cobertura mostram quantos
   participantes faltam, e os terminais só travam quando a última fila esvazia.
 - A velocidade fica travada em 1x, porque a resposta dos modelos não acelera; para
   uma operação mais curta ou mais longa, ajuste a duração.
-- Só a coleta muda: a consolidação recebe os mesmos extratos e não sabe quem registrou.
-- Os preços do catálogo ([`agentes.py`](services/coleta/app/agentes.py)) são os da
-  página da OpenAI em outubro de 2026 e servem para a estimativa e o gasto exibidos.
+- Só a coleta muda: a consolidação recebe os mesmos extratos e não sabe como foram gerados.
+- Os preços do catálogo de modelos ([`agentes.py`](services/coleta/app/agentes.py)) são os
+  da página da OpenAI em outubro de 2026 e servem para a estimativa e o gasto exibidos.
 
 ## Regras de consolidação
 
-Vazios e inválidos são contados e exibidos, mas o predominante sai só dos registros válidos, pela
-maior contagem, em uma única etapa. Em caso de equivalência: (1) prevalece o item que predomina em mais unidades;
-(2) persistindo, seleção reprodutível a partir da seed e do id da operação, registrado no
-log da consolidação.
+Registros vazios e inválidos são contados e exibidos, mas o item predominante sai só dos
+registros classificados, pela maior contagem. Em caso de equivalência: (1) prevalece o
+item predominante em mais unidades; (2) persistindo, uma seleção determinística a partir
+da seed e do id da operação, registrada no log da consolidação.
 
 ## Testes
 
@@ -138,17 +147,18 @@ cd services/transporte && ../../.venv/Scripts/python -m pytest
 
 `scripts/e2e.py` sobe os três serviços em processos separados, roda uma operação curta e
 acelerada com 10% de perda, 5% de corrupção, atraso extremo e uma queda de link, e
-verifica que a consolidação final da central bate registro a registro com os extratos dos terminais.
+verifica que a consolidação final da central bate registro a registro com os extratos dos
+terminais.
 
 Para regenerar os esquemas do contrato: `python contracts/gerar_schemas.py`.
 
 ## Estrutura
 
 ```
-contracts/          contrato v1 (fonte Pydantic + JSON Schemas)
-services/coleta/   terminais, extrato, distribuidor (FastAPI, SQLAlchemy async, Alembic)
-services/transporte/      proxy com latência e falhas
-services/consolidacao/  recepção, validação, verificação e consolidacao_final
-painel/             React + TypeScript + Vite, Tailwind, PixiJS, ECharts, Zustand, Motion
-scripts/e2e.py      operação ponta a ponta
+contracts/              contrato v1 (fonte Pydantic + JSON Schemas)
+services/coleta/        terminais, extrato, distribuidor (FastAPI, SQLAlchemy async, Alembic)
+services/transporte/    proxy com latência e falhas
+services/consolidacao/  recepção, validação, verificação e consolidação final
+painel/                 React + TypeScript + Vite, Tailwind, PixiJS, ECharts, Zustand, Motion
+scripts/e2e.py          operação ponta a ponta
 ```

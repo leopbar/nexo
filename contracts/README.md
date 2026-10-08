@@ -7,16 +7,16 @@ Pydantic, verificados em teste contra estes esquemas.
 
 ## Mensagens
 
-| Mensagem    | Quem envia             | Rota na rede simulada        | Rota na consolidação      |
-|-------------|------------------------|------------------------------|-----------------------|
-| `Manifesto` | distribuidor da unidade  | `POST /encaminhar/manifesto` | `POST /entrada/manifesto` |
-| `Pacote`    | distribuidor da unidade  | `POST /encaminhar/pacote`    | `POST /entrada/pacote`    |
-| `Resposta`  | consolidação (ACK / NACK)  | volta pela mesma conexão     | —                     |
+| Mensagem    | Quem envia                | Rota no transporte simulado  | Rota na consolidação      |
+|-------------|---------------------------|------------------------------|---------------------------|
+| `Manifesto` | distribuidor da unidade   | `POST /encaminhar/manifesto` | `POST /entrada/manifesto` |
+| `Pacote`    | distribuidor da unidade   | `POST /encaminhar/pacote`    | `POST /entrada/pacote`    |
+| `Resposta`  | consolidação (ACK / NACK) | volta pela mesma conexão     | —                         |
 
 A consolidação responde `503` enquanto não estiver habilitada (a coleta ainda está
 aberta). Qualquer outra resposta é um `Resposta` com HTTP 200.
 
-## Forma canônica e validação
+## Forma canônica e verificação de integridade dos dados
 
 `canonico(x)` = JSON UTF-8 com chaves ordenadas e separadores `,` e `:` sem espaços
 (`json.dumps(x, sort_keys=True, separators=(",", ":"), ensure_ascii=False)`).
@@ -36,5 +36,5 @@ sistemas na configuração da operação.
 ## Cabeçalhos de transporte
 
 O distribuidor envia, além do corpo, os cabeçalhos `X-Envio-Id`, `X-Pacote-Id`,
-`X-Unidade`, `X-Tipo`, `X-Lote` e `X-Tentativa`. Eles servem só à rede simulada
-e à observação; a consolidação confia apenas no corpo assinado.
+`X-Unidade`, `X-Tipo`, `X-Lote` e `X-Tentativa`. Eles servem só ao transporte
+simulado e à observação; a consolidação confia apenas no corpo assinado.

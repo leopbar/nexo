@@ -64,7 +64,7 @@ interface Estado {
   consolidado: Contagens | null
   percentualProcessado: number
   log: EventoLog[]
-  consolidacao_final: ConsolidacaoFinal | null
+  consolidacaoFinal: ConsolidacaoFinal | null
 
   aplicar: (m: Mensagem) => void
   definirConexao: (origem: Origem, ok: boolean) => void
@@ -123,7 +123,7 @@ export const useOperacao = create<Estado>()(
       consolidado: null,
       percentualProcessado: 0,
       log: [],
-      consolidacao_final: null,
+      consolidacaoFinal: null,
 
       aplicar: (m) => {
         const d = m.dados
@@ -222,7 +222,7 @@ export const useOperacao = create<Estado>()(
                 consolidado: d.consolidado && d.consolidado.itens ? d.consolidado : null,
                 percentualProcessado: d.percentual_processado,
                 log: d.log,
-                consolidacao_final: d.consolidacao_final,
+                consolidacaoFinal: d.consolidacao_final,
                 ...(m.tipo === 'reiniciado' ? { consolidacaoAberta: false } : {}),
               })
               break
@@ -244,7 +244,7 @@ export const useOperacao = create<Estado>()(
               set({ log: [...get().log.slice(-299), d] })
               break
             case 'consolidacao_final':
-              set({ consolidacao_final: d, consolidacaoAberta: true })
+              set({ consolidacaoFinal: d, consolidacaoAberta: true })
               break
           }
         }

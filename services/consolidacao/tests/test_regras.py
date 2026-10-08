@@ -7,7 +7,7 @@ def test_maior_contagem():
     assert decisao["equivalencia"] is None
 
 
-def test_equivalencia_decidido_por_unidades():
+def test_equivalencia_decidida_por_unidades():
     decisao = regras.definir_predominante([30, 30, 20], [1, 3, 0], "s")
     assert decisao["predominante"] == 2
     assert decisao["equivalencia"] == "unidades"

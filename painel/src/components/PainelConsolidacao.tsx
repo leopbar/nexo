@@ -35,7 +35,7 @@ function Consolidado() {
 
   const opcao = useMemo<OpcaoGrafico>(() => {
     const valores = consolidado?.itens ?? nomes.map(() => 0)
-    const validos = valores.reduce((a, b) => a + b, 0)
+    const classificados = valores.reduce((a, b) => a + b, 0)
     return {
       animationDurationUpdate: 600,
       grid: { left: 4, right: 92, top: 4, bottom: 4, containLabel: true },
@@ -62,7 +62,7 @@ function Consolidado() {
             color: '#e4e4e7',
             fontSize: 11,
             fontFamily: 'Geist Mono Variable, monospace',
-            formatter: (p: { value: number }) => `${num(p.value)}  ${pct(validos ? p.value / validos : 0)}`,
+            formatter: (p: { value: number }) => `${num(p.value)}  ${pct(classificados ? p.value / classificados : 0)}`,
           },
         },
       ],
@@ -71,19 +71,19 @@ function Consolidado() {
 
   const vazios = consolidado?.vazios ?? 0
   const invalidos = consolidado?.invalidos ?? 0
-  const validos = consolidado ? consolidado.itens.reduce((a, b) => a + b, 0) : 0
+  const classificados = consolidado ? consolidado.itens.reduce((a, b) => a + b, 0) : 0
   return (
     <>
       <Grafico opcao={opcao} className="h-[140px] w-full" />
       <div className="mt-1 flex justify-between text-[11px] text-zinc-500">
-        <span>válidos {num(validos)}</span>
+        <span>classificados {num(classificados)}</span>
         <span>
           <span className="mr-1 inline-block h-2 w-2 rounded-sm" style={{ background: COR_VAZIO }} />
           vazios {num(vazios)}
         </span>
         <span>
           <span className="mr-1 inline-block h-2 w-2 rounded-sm" style={{ background: COR_INVALIDO }} />
-          invalidos {num(invalidos)}
+          inválidos {num(invalidos)}
         </span>
       </div>
     </>
@@ -117,7 +117,7 @@ function ProgressoUnidades() {
   )
 }
 
-function Rede() {
+function Transporte() {
   const e = useOperacao((s) => s.estatisticasTransporte)
   const itens = [
     ['enviados', e.enviados, 'text-zinc-300'],
@@ -163,7 +163,7 @@ export function PainelConsolidacao() {
     fase === 'habilitada'
       ? { rotulo: 'recebendo', variante: 'verde' as const }
       : fase === 'consolidacao_final'
-        ? { rotulo: 'consolidacao_final', variante: 'violeta' as const }
+        ? { rotulo: 'consolidada', variante: 'violeta' as const }
         : fase === 'aguardando'
           ? { rotulo: 'aguardando · caixa fechada', variante: 'ambar' as const }
           : { rotulo: fase, variante: 'neutro' as const }
@@ -200,10 +200,10 @@ export function PainelConsolidacao() {
 
       <Card>
         <CardHeader>
-          <CardTitle>Rede simulada</CardTitle>
+          <CardTitle>Transporte simulado</CardTitle>
         </CardHeader>
         <CardContent>
-          <Rede />
+          <Transporte />
         </CardContent>
       </Card>
 

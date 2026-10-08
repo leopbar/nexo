@@ -62,7 +62,7 @@ class ComandoRelogio(BaseModel):
 
 
 class RegistroManual(BaseModel):
-    """Registro digitado no terminal; o que não for um item válido nem 'vazio' vira invalido."""
+    """Registro digitado no terminal; o que não for um item do catálogo nem 'vazio' vira inválido."""
 
     digitado: str = Field(max_length=20)
 

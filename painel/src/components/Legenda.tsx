@@ -26,7 +26,7 @@ export function Legenda() {
             <Item key={i} cor={corItem(i)} rotulo={n} />
           ))}
           <Item cor={COR_VAZIO} rotulo="vazio" />
-          <Item cor={COR_INVALIDO} rotulo="invalido" />
+          <Item cor={COR_INVALIDO} rotulo="inválido" />
           <span className="text-zinc-600">· cada ponto = {porPonto} participantes</span>
         </>
       ) : (

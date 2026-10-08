@@ -60,7 +60,7 @@ def interpretar_digitado(digitado: str, num_itens: int) -> int:
 
 
 def amostrar_classe(rng: random.Random, num_itens: int, prob_vazio: float, prob_invalido: float) -> int:
-    """Cada registro é classificado de forma independente: itens equiprováveis, descontados vazio e invalido."""
+    """Cada registro é classificado de forma independente: itens equiprováveis, descontados vazio e inválido."""
     r = rng.random()
     if r < prob_vazio:
         return VAZIO

@@ -28,8 +28,8 @@ export interface AndamentoUnidade {
   cobertura: number
   ausentes: number
   contagens: Contagens
-  aberta: boolean
-  /** Participantes na fila que ainda não registraram (só no modo agentes de IA). */
+  aberto: boolean
+  /** Participantes na fila que ainda não tiveram o registro gerado (só no modo agentes de IA). */
   fila: number
   distribuicao: StatusDistribuicao
   pacotes_total: number
@@ -67,7 +67,7 @@ export interface EventoLog {
 export interface ConsolidacaoFinal {
   operacao_id: string
   totais: Contagens
-  validos: number
+  classificados: number
   total_registros: number
   percentuais: number[]
   predominancia_por_unidade: number[]

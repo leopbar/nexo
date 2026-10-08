@@ -17,15 +17,15 @@ export function usd(v: number): string {
   return dolar.format(v)
 }
 
-/** Modelos que de fato podem registrar: ativos e, se a conta foi verificada, disponíveis nela. */
+/** Modelos que de fato podem gerar registros: ativos e, se a conta foi verificada, disponíveis nela. */
 export function modelosProntos(agentes: EstadoAgentes | null): ModeloAgente[] {
   return agentes?.modelos.filter((m) => m.ativo && m.disponivel !== false) ?? []
 }
 
 /** Estimativa grosseira: prompt curto com o catálogo, ~2 tokens de saída por registro, modelo sorteado entre os prontos. */
 export function estimarCusto(config: ConfigOperacao, agentes: EstadoAgentes | null) {
-  const registrantes = ((config.participantesMin + config.participantesMax) / 2) * config.numUnidades * ((config.coberturaMin + config.coberturaMax) / 200)
-  const chamadas = Math.ceil(registrantes / config.loteAgentes)
+  const registros = ((config.participantesMin + config.participantesMax) / 2) * config.numUnidades * ((config.coberturaMin + config.coberturaMax) / 200)
+  const chamadas = Math.ceil(registros / config.loteAgentes)
   const catalogo = [...config.nomesItens, ...config.descricoesItens].join(' ').length / 4
   const entrada = 90 + catalogo
   const saida = config.loteAgentes * 2
@@ -148,7 +148,7 @@ export function PainelAgentes() {
                   <div>
                     <div className="mb-1 flex items-center gap-2">
                       <span className="text-[11px] font-medium uppercase tracking-[0.14em] text-zinc-500">Modelos</span>
-                      <span className="text-[11px] text-zinc-600">{prontos.length} registrando</span>
+                      <span className="text-[11px] text-zinc-600">{prontos.length} em uso</span>
                       <Button
                         variant="ghost"
                         size="sm"

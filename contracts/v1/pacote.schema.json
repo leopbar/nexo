@@ -2,10 +2,10 @@
   "$defs": {
     "Contagens": {
       "additionalProperties": false,
-      "description": "Registros agregados: válidos por item, vazios e invalidos.",
+      "description": "Registros agregados: classificados por item, vazios e inválidos.",
       "properties": {
         "itens": {
-          "description": "Registros válidos por item, na ordem 1..N.",
+          "description": "Registros classificados por item, na ordem 1..N.",
           "items": {
             "minimum": 0,
             "type": "integer"
