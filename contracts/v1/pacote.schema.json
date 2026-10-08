@@ -32,6 +32,63 @@
       ],
       "title": "Contagens",
       "type": "object"
+    },
+    "Transformacao": {
+      "additionalProperties": false,
+      "description": "Reclassificação de um pacote feita pelo Prisma no caminho até a central.\n\nO pacote mantém as contagens e a assinatura originais da unidade; este bloco traz as\ncontagens efetivas, assinadas pelo Prisma. O total, os vazios e os inválidos não mudam.",
+      "properties": {
+        "origem": {
+          "const": "prisma",
+          "title": "Origem",
+          "type": "string"
+        },
+        "pacote_id": {
+          "maxLength": 64,
+          "minLength": 1,
+          "title": "Pacote Id",
+          "type": "string"
+        },
+        "checksum_original": {
+          "description": "checksum do pacote original da unidade.",
+          "pattern": "^[0-9a-f]{64}$",
+          "title": "Checksum Original",
+          "type": "string"
+        },
+        "item_alvo": {
+          "description": "Item que recebeu os registros reclassificados.",
+          "minimum": 1,
+          "title": "Item Alvo",
+          "type": "integer"
+        },
+        "percentual": {
+          "description": "Percentual dos registros de outros itens reclassificados.",
+          "exclusiveMinimum": 0,
+          "maximum": 100,
+          "title": "Percentual",
+          "type": "number"
+        },
+        "contagens": {
+          "$ref": "#/$defs/Contagens",
+          "description": "Contagens efetivas depois da reclassificação."
+        },
+        "assinatura": {
+          "description": "HMAC-SHA256 do Prisma sobre o SHA-256 deste bloco sem a assinatura.",
+          "pattern": "^[0-9a-f]{64}$",
+          "title": "Assinatura",
+          "type": "string"
+        }
+      },
+      "required": [
+        "origem",
+        "pacote_id",
+        "checksum_original",
+        "item_alvo",
+        "percentual",
+        "contagens",
+        "assinatura"
+      ],
+      "title": "Transformacao",
+      "type": "object"
     }
   },
   "additionalProperties": false,
@@ -74,7 +131,7 @@
       "$ref": "#/$defs/Contagens"
     },
     "checksum": {
-      "description": "SHA-256 do pacote canônico sem checksum e assinatura.",
+      "description": "SHA-256 do pacote canônico sem checksum, assinatura e transformacao.",
       "pattern": "^[0-9a-f]{64}$",
       "title": "Checksum",
       "type": "string"
@@ -84,6 +141,18 @@
       "pattern": "^[0-9a-f]{64}$",
       "title": "Assinatura",
       "type": "string"
+    },
+    "transformacao": {
+      "anyOf": [
+        {
+          "$ref": "#/$defs/Transformacao"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "description": "Presente só quando o Prisma reclassificou o lote; fica fora do checksum."
     }
   },
   "required": [

@@ -24,7 +24,9 @@ class PacoteRecebido(Base):
     id: Mapped[str] = mapped_column(String(64), primary_key=True)
     unidade_id: Mapped[int] = mapped_column(Integer)
     lote: Mapped[int] = mapped_column(Integer)
-    contagens: Mapped[dict] = mapped_column(JSON)
+    contagens: Mapped[dict] = mapped_column(JSON)  # como a unidade enviou (base da verificação)
+    contagens_efetivas: Mapped[dict | None] = mapped_column(JSON(none_as_null=True), nullable=True)  # o que entra na consolidação
+    transformacao: Mapped[dict | None] = mapped_column(JSON(none_as_null=True), nullable=True)  # bloco do Prisma, se houve
     recebido_em: Mapped[float] = mapped_column(Float)
 
 

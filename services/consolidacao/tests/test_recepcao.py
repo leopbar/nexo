@@ -116,3 +116,74 @@ async def test_json_ilegivel_gera_nack(sistema):
     await sistema.habilitar()
     _, r = await sistema.receber_pacote(b'{"versao": "1.0", "lote": 01', {"x-pacote-id": "p-9", "x-unidade": "1"})
     assert r.tipo == "NACK" and r.referencia == "p-9"
+
+
+CHAVE_PRISMA = "chave-do-prisma-de-teste"
+
+
+def _reclassificar(pacote, efetivas, alvo=1, chave=CHAVE_PRISMA):
+    """Anexa um bloco de transformação como o Prisma faria (implementação de teste, independente)."""
+    bloco = {
+        "origem": "prisma",
+        "pacote_id": pacote["id"],
+        "checksum_original": pacote["checksum"],
+        "item_alvo": alvo,
+        "percentual": 50.0,
+        "contagens": efetivas,
+    }
+    assinatura = hmac.new(chave.encode(), hashlib.sha256(_canon(bloco)).hexdigest().encode(), hashlib.sha256).hexdigest()
+    return {**pacote, "transformacao": {**bloco, "assinatura": assinatura}}
+
+
+@pytest.fixture
+async def sistema_prisma(tmp_path):
+    engine = create_async_engine(f"sqlite+aiosqlite:///{tmp_path / 'consolidacao.db'}")
+    async with engine.begin() as conexao:
+        await conexao.run_sync(Base.metadata.create_all)
+    s = SistemaConsolidacao(async_sessionmaker(engine, expire_on_commit=False), CHAVE_PRISMA)
+    await s.configurar(ConfigConsolidacao(operacao_id=OPERACAO, unidades=[UnidadeConfig(id=1, nome="Aurora", chave_hmac=CHAVE)], num_itens=2, duracao_coleta_s=0))
+    await s.iniciar()
+    await s.habilitar()
+    yield s
+    await engine.dispose()
+
+
+async def test_reclassificacao_do_prisma_entra_na_consolidacao(sistema_prisma):
+    s = sistema_prisma
+    manifesto, pacotes = _extrato(LOTES)
+    await s.receber_manifesto(_bytes(manifesto), {})
+    # lote 1: 95 registros do item 2 passam para o item 1; total, vazios e inválidos iguais
+    _, r = await s.receber_pacote(_bytes(_reclassificar(pacotes[0], {"itens": [395, 95], "vazios": 6, "invalidos": 4})), {})
+    assert r.tipo == "ACK"
+    assert s.consolidado["itens"] == [395, 95]
+    _, r = await s.receber_pacote(_bytes(pacotes[1]), {})
+    assert r.tipo == "ACK"
+    assert s.unidades[1].status == "validada"  # verificada contra o manifesto original
+    assert s.consolidacao_final["totais"]["itens"] == [495, 215]
+    assert s.consolidacao_final["total_registros"] == sum(manifesto["totais"]["itens"]) + 13
+
+
+async def test_reclassificacao_com_assinatura_errada_e_recusada(sistema_prisma):
+    s = sistema_prisma
+    manifesto, pacotes = _extrato(LOTES)
+    await s.receber_manifesto(_bytes(manifesto), {})
+    forjado = _reclassificar(pacotes[0], {"itens": [395, 95], "vazios": 6, "invalidos": 4}, chave="outra-chave")
+    _, r = await s.receber_pacote(_bytes(forjado), {})
+    assert r.tipo == "NACK" and "assinatura do Prisma" in r.motivo
+    assert s.consolidado["itens"] == [0, 0]
+
+
+@pytest.mark.parametrize(
+    "efetivas,motivo",
+    [
+        ({"itens": [400, 95], "vazios": 6, "invalidos": 4}, "total alterado"),
+        ({"itens": [393, 95], "vazios": 8, "invalidos": 4}, "vazios ou inválidos alterados"),
+        ({"itens": [200, 290], "vazios": 6, "invalidos": 4}, "movimento fora do item alvo"),
+    ],
+)
+async def test_reclassificacao_que_nao_so_move_para_o_alvo_e_recusada(sistema_prisma, efetivas, motivo):
+    s = sistema_prisma
+    manifesto, pacotes = _extrato(LOTES)
+    await s.receber_manifesto(_bytes(manifesto), {})
+    _, r = await s.receber_pacote(_bytes(_reclassificar(pacotes[0], efetivas)), {})
+    assert r.tipo == "NACK" and motivo in r.motivo

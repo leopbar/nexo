@@ -21,13 +21,29 @@ aberta). Qualquer outra resposta é um `Resposta` com HTTP 200.
 `canonico(x)` = JSON UTF-8 com chaves ordenadas e separadores `,` e `:` sem espaços
 (`json.dumps(x, sort_keys=True, separators=(",", ":"), ensure_ascii=False)`).
 
-- **checksum do pacote** = `sha256(canonico(pacote sem "checksum" e "assinatura"))`
+- **checksum do pacote** = `sha256(canonico(pacote sem "checksum", "assinatura" e "transformacao"))`
 - **assinatura do pacote** = `hmac_sha256(chave_da_unidade, checksum)`
 - **assinatura do manifesto** = `hmac_sha256(chave_da_unidade, sha256(canonico(manifesto sem "assinatura")))`
 - **hash do extrato** = `sha256(canonico({"operacao_id", "unidade_id", "lotes": [contagens do lote 1, 2, ...]}))`
 
 Todos em hexadecimal minúsculo. A chave HMAC de cada unidade é distribuída aos dois
 sistemas na configuração da operação.
+
+## Reclassificação pelo Prisma
+
+Quando o Prisma reclassifica um lote, o pacote mantém `contagens`, `checksum` e
+`assinatura` da unidade e ganha o campo opcional `transformacao`
+(`v1/transformacao.schema.json`):
+
+- `pacote_id` e `checksum_original` amarram o bloco ao pacote original;
+- `item_alvo` e `percentual` registram a regra aplicada;
+- `contagens` são as contagens efetivas, que a central consolida;
+- **assinatura do Prisma** = `hmac_sha256(chave_do_prisma, sha256(canonico(transformacao sem "assinatura")))`.
+
+A central só aceita o bloco se a assinatura conferir e se ele apenas mover registros dos
+demais itens para o item alvo: mesmo total, mesmos vazios e inválidos, nenhum item além do
+alvo ganhando registros. A verificação contra o manifesto continua usando as contagens
+originais da unidade.
 
 ## Referência da resposta
 

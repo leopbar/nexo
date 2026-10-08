@@ -16,7 +16,7 @@ import structlog
 from pydantic import ValidationError
 from sqlalchemy import delete, insert, select
 
-from . import regras
+from . import config, regras
 from .contrato import Manifesto, Pacote, Resposta
 from .esquemas import ComandoRelogio, ConfigConsolidacao
 from .eventos import Hub
@@ -71,7 +71,8 @@ class UnidadeConsolidacao:
 
 
 class SistemaConsolidacao:
-    def __init__(self, sessoes) -> None:
+    def __init__(self, sessoes, chave_prisma: str = config.PRISMA_CHAVE) -> None:
+        self.chave_prisma = chave_prisma
         self.relogio = RelogioSimulado()
         self.hub = Hub("consolidacao", self.relogio)
         self.sessoes = sessoes
@@ -252,6 +253,13 @@ class SistemaConsolidacao:
         if not regras.assinatura_pacote_verifica(dados, unidade.chave):
             await self._registrar("rejeitado", f"Lote {pacote.lote} de {unidade.nome}: assinatura inválida. NACK.", unidade.id, referencia=pacote.id, lote=pacote.lote)
             return 200, self._nack(pacote.id, "assinatura inválida")
+        transformacao = dados["transformacao"]
+        if transformacao is not None:
+            problema = regras.problema_na_transformacao(dados, self.chave_prisma)
+            if problema:
+                await self._registrar("rejeitado", f"Lote {pacote.lote} de {unidade.nome}: reclassificação recusada ({problema}). NACK.", unidade.id, referencia=pacote.id, lote=pacote.lote)
+                return 200, self._nack(pacote.id, f"transformação inválida: {problema}")
+        efetivas = transformacao["contagens"] if transformacao is not None else dados["contagens"]
 
         async with self._trava:
             if pacote.id in unidade.ids:
@@ -265,11 +273,22 @@ class SistemaConsolidacao:
                 return 200, self._nack(pacote.id, "lote fora do manifesto")
 
             async with self.sessoes() as sessao, sessao.begin():
-                sessao.add(PacoteRecebido(id=pacote.id, unidade_id=unidade.id, lote=pacote.lote, contagens=dados["contagens"], recebido_em=self.relogio.agora()))
+                sessao.add(
+                    PacoteRecebido(
+                        id=pacote.id,
+                        unidade_id=unidade.id,
+                        lote=pacote.lote,
+                        contagens=dados["contagens"],
+                        contagens_efetivas=efetivas,
+                        transformacao=transformacao,
+                        recebido_em=self.relogio.agora(),
+                    )
+                )
             unidade.ids.add(pacote.id)
+            # A verificação contra o manifesto usa o que a unidade enviou; a consolidação, o efetivo.
             unidade.lotes[pacote.lote] = dados["contagens"]
             regras.acumular(unidade.contagens, dados["contagens"])
-            regras.acumular(self.consolidado, dados["contagens"])
+            regras.acumular(self.consolidado, efetivas)
             await self._registrar(
                 "aceito",
                 f"Lote {pacote.lote}/{pacote.total_lotes} de {unidade.nome} aceito (+{regras.total(dados['contagens'])} registros). ACK.",
@@ -311,8 +330,9 @@ class SistemaConsolidacao:
         num = self.config.num_itens
         por_unidade: dict[int, dict] = {f: regras.contagens_vazias(num) for f in self.unidades}
         async with self.sessoes() as sessao:
-            for unidade_id, contagens in (await sessao.execute(select(PacoteRecebido.unidade_id, PacoteRecebido.contagens))).all():
-                regras.acumular(por_unidade[unidade_id], contagens)
+            linhas = await sessao.execute(select(PacoteRecebido.unidade_id, PacoteRecebido.contagens, PacoteRecebido.contagens_efetivas))
+            for unidade_id, contagens, efetivas in linhas.all():
+                regras.acumular(por_unidade[unidade_id], efetivas or contagens)
         totais = regras.contagens_vazias(num)
         for contagens in por_unidade.values():
             regras.acumular(totais, contagens)

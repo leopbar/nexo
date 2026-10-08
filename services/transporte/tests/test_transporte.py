@@ -56,3 +56,49 @@ async def test_link_offline_recusa_imediatamente():
     resposta = await rede.encaminhar("pacote", CABECALHOS, CORPO)
     assert resposta.status_code == 503
     assert resposta.headers["x-transporte"] == "offline"
+
+
+def _com_prisma(responder_prisma):
+    """Transporte com Prisma: registra o que chegou à central."""
+    chegou: list[bytes] = []
+
+    def tratar(request: httpx.Request) -> httpx.Response:
+        if request.url.host == "prisma":
+            return responder_prisma(request)
+        chegou.append(request.content)
+        return _consolidacao_falsa(request)
+
+    cliente = httpx.AsyncClient(transport=httpx.MockTransport(tratar))
+    rede = SistemaTransporte(cliente, "http://consolidacao", "http://prisma")
+    rede.configurar(ConfigTransporte(operacao_id="e", unidades=[UnidadeTransporte(id=1, latencia_base_s=3)], seed=1, taxa_perda=0, taxa_corrupcao=0, taxa_atraso_extremo=0, eventos_offline=0, jitter_s=0))
+    rede.relogio.definir_escala(100)
+    return rede, chegou
+
+
+async def test_pacote_passa_pelo_prisma_antes_da_central():
+    def prisma(request: httpx.Request) -> httpx.Response:
+        corpo = json.loads(request.content) | {"transformacao": {"origem": "prisma"}}
+        return httpx.Response(200, json=corpo)
+
+    rede, chegou = _com_prisma(prisma)
+    resposta = await rede.encaminhar("pacote", CABECALHOS, CORPO)
+    assert resposta.status_code == 200
+    assert json.loads(chegou[0])["transformacao"] == {"origem": "prisma"}
+
+
+async def test_manifesto_nao_passa_pelo_prisma():
+    def prisma(_: httpx.Request) -> httpx.Response:
+        raise AssertionError("manifesto não deve ir ao Prisma")
+
+    rede, chegou = _com_prisma(prisma)
+    await rede.encaminhar("manifesto", CABECALHOS, CORPO)
+    assert chegou == [CORPO]
+
+
+async def test_prisma_fora_do_ar_nao_interrompe_o_fluxo():
+    def prisma(request: httpx.Request) -> httpx.Response:
+        raise httpx.ConnectError("recusada", request=request)
+
+    rede, chegou = _com_prisma(prisma)
+    resposta = await rede.encaminhar("pacote", CABECALHOS, CORPO)
+    assert resposta.status_code == 200 and chegou == [CORPO]

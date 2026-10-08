@@ -16,7 +16,7 @@ def main() -> None:
     for nome, modelo in MODELOS.items():
         caminho = DESTINO / f"{nome}.schema.json"
         esquema = modelo.model_json_schema()
-        caminho.write_text(json.dumps(esquema, indent=2, ensure_ascii=False) + "\n", encoding="utf-8")
+        caminho.write_text(json.dumps(esquema, indent=2, ensure_ascii=False) + "\n", encoding="utf-8", newline="\n")
         print(f"gerado {caminho.relative_to(Path.cwd()) if caminho.is_relative_to(Path.cwd()) else caminho}")
 
 

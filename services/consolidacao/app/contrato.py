@@ -39,6 +39,24 @@ class Manifesto(BaseModel):
     assinatura: Hex64 = Field(description="HMAC-SHA256 da unidade sobre o SHA-256 do manifesto sem este campo.")
 
 
+class Transformacao(BaseModel):
+    """Reclassificação de um pacote feita pelo Prisma no caminho até a central.
+
+    O pacote mantém as contagens e a assinatura originais da unidade; este bloco traz as
+    contagens efetivas, assinadas pelo Prisma. O total, os vazios e os inválidos não mudam.
+    """
+
+    model_config = ConfigDict(extra="forbid")
+
+    origem: Literal["prisma"]
+    pacote_id: str = Field(min_length=1, max_length=64)
+    checksum_original: Hex64 = Field(description="checksum do pacote original da unidade.")
+    item_alvo: int = Field(ge=1, description="Item que recebeu os registros reclassificados.")
+    percentual: float = Field(gt=0, le=100, description="Percentual dos registros de outros itens reclassificados.")
+    contagens: Contagens = Field(description="Contagens efetivas depois da reclassificação.")
+    assinatura: Hex64 = Field(description="HMAC-SHA256 do Prisma sobre o SHA-256 deste bloco sem a assinatura.")
+
+
 class Pacote(BaseModel):
     """Um lote do extrato de terminal: só contagens agregadas, nunca registros individuais."""
 
@@ -51,8 +69,9 @@ class Pacote(BaseModel):
     lote: int = Field(ge=1)
     total_lotes: int = Field(ge=1)
     contagens: Contagens
-    checksum: Hex64 = Field(description="SHA-256 do pacote canônico sem checksum e assinatura.")
+    checksum: Hex64 = Field(description="SHA-256 do pacote canônico sem checksum, assinatura e transformacao.")
     assinatura: Hex64 = Field(description="HMAC-SHA256 da unidade sobre o checksum.")
+    transformacao: Transformacao | None = Field(default=None, description="Presente só quando o Prisma reclassificou o lote; fica fora do checksum.")
 
 
 class Resposta(BaseModel):

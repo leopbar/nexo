@@ -20,7 +20,7 @@ from .transporte import ComandoInvalido, SistemaTransporte
 async def ciclo_de_vida(app: FastAPI):
     configurar_logs(config.LOG_JSON)
     cliente = httpx.AsyncClient(timeout=httpx.Timeout(30.0), limits=httpx.Limits(max_connections=400, max_keepalive_connections=100))
-    app.state.sistema = SistemaTransporte(cliente, config.CONSOLIDACAO_URL)
+    app.state.sistema = SistemaTransporte(cliente, config.CONSOLIDACAO_URL, config.PRISMA_URL)
     yield
     await app.state.sistema.reiniciar()
     await cliente.aclose()

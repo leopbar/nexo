@@ -53,18 +53,54 @@ services:
     build: ./services/transporte
     environment:
       CONSOLIDACAO_URL: http://consolidacao:8000
-    networks: [unidades, central, controle]
+      PRISMA_URL: http://prisma:8000
+    networks: [unidades, central, prisma, controle]
     ports: ["${TRANSPORTE_PORTA:-8092}:8000"]
 
   consolidacao:
     build: ./services/consolidacao
     environment:
       DATABASE_URL: postgresql+asyncpg://consolidacao:consolidacao@consolidacao-db:5432/consolidacao
+      PRISMA_CHAVE: ${PRISMA_CHAVE:-prisma-chave-local-de-desenvolvimento}
     depends_on:
       consolidacao-db:
         condition: service_healthy
     networks: [banco-consolidacao, central, controle]
     ports: ["${CONSOLIDACAO_PORTA:-8093}:8000"]
+
+  prisma-db:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_DB: prisma
+      POSTGRES_USER: prisma
+      POSTGRES_PASSWORD: prisma
+    volumes:
+      - prisma-dados:/var/lib/postgresql/data
+    networks: [banco-prisma]
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U prisma -d prisma"]
+      interval: 2s
+      timeout: 3s
+      retries: 30
+
+  # Prisma: reclassifica pacotes em trânsito, quando ativado na sua própria tela.
+  prisma:
+    build: ./services/prisma
+    environment:
+      DATABASE_URL: postgresql+asyncpg://prisma:prisma@prisma-db:5432/prisma
+      COLETA_URL: http://coleta:8000
+      PRISMA_CHAVE: ${PRISMA_CHAVE:-prisma-chave-local-de-desenvolvimento}
+    depends_on:
+      prisma-db:
+        condition: service_healthy
+    networks: [banco-prisma, prisma, controle]
+    ports: ["${PRISMA_API_PORTA:-8095}:8000"]
+
+  painel-prisma:
+    build: ./painel-prisma
+    depends_on: [prisma]
+    networks: [controle]
+    ports: ["${PRISMA_PORTA:-8094}:80"]
 
   painel:
     build: ./painel
@@ -77,8 +113,11 @@ networks:
   banco-consolidacao: {}  # só consolidação ⇄ seu banco
   unidades: {}            # distribuidor das unidades ⇄ transporte simulado
   central: {}             # transporte simulado ⇄ consolidação
+  prisma: {}              # transporte simulado ⇄ Prisma
+  banco-prisma: {}        # só Prisma ⇄ seu banco
   controle: {}            # painel ⇄ os três serviços (comandos e eventos)
 
 volumes:
   coleta-dados: {}
   consolidacao-dados: {}
+  prisma-dados: {}

@@ -20,6 +20,18 @@
       "port": 8003
     },
     {
+      "name": "prisma",
+      "runtimeExecutable": ".venv/Scripts/python.exe",
+      "runtimeArgs": ["-m", "uvicorn", "app.main:app", "--app-dir", "services/prisma", "--port", "8004"],
+      "port": 8004
+    },
+    {
+      "name": "painel-prisma",
+      "runtimeExecutable": "npm",
+      "runtimeArgs": ["--prefix", "painel-prisma", "run", "dev"],
+      "port": 5174
+    },
+    {
       "name": "painel",
       "runtimeExecutable": "npm",
       "runtimeArgs": ["--prefix", "painel", "run", "dev"],

@@ -25,6 +25,7 @@ from .relogio import RelogioSimulado
 log = structlog.get_logger("transporte")
 
 SEGURAR_PERDIDO_S = 30.0
+PRISMA_TIMEOUT_S = 5.0
 CABECALHOS_REPASSADOS = ("content-type", "x-envio-id", "x-pacote-id", "x-unidade", "x-tipo", "x-lote", "x-tentativa")
 
 
@@ -51,11 +52,12 @@ class Link:
 
 
 class SistemaTransporte:
-    def __init__(self, cliente: httpx.AsyncClient, consolidacao_url: str) -> None:
+    def __init__(self, cliente: httpx.AsyncClient, consolidacao_url: str, prisma_url: str | None = None) -> None:
         self.relogio = RelogioSimulado()
         self.hub = Hub("transporte", self.relogio)
         self.cliente = cliente
         self.consolidacao_url = consolidacao_url
+        self.prisma_url = prisma_url or None
         self.fase = "configuracao"
         self.config: ConfigTransporte | None = None
         self.links: dict[int, Link] = {}
@@ -171,6 +173,8 @@ class SistemaTransporte:
         if transito.cortado or geracao != self.geracao:
             return await self._segurar()
 
+        if tipo == "pacote" and self.prisma_url:
+            corpo = await self._passar_pelo_prisma(corpo)
         if destino == "corrupcao":
             corpo = self._corromper(corpo)
             self.estatisticas["corrompidos"] += 1
@@ -188,6 +192,18 @@ class SistemaTransporte:
         self.hub.publicar("retorno", info | {"classificacao": _classificar(resposta), "status": resposta.status_code, "latencia": round(retorno, 3)})
         await self.relogio.dormir(retorno)
         return Response(content=resposta.content, status_code=resposta.status_code, media_type="application/json")
+
+    async def _passar_pelo_prisma(self, corpo: bytes) -> bytes:
+        """Entrega o pacote ao Prisma, que decide se o reclassifica. Se ele não responder, segue o original."""
+        try:
+            resposta = await self.cliente.post(f"{self.prisma_url}/transformar", content=corpo, headers={"content-type": "application/json"}, timeout=PRISMA_TIMEOUT_S)
+        except httpx.HTTPError as erro:
+            log.warning("prisma_inacessivel", erro=type(erro).__name__)
+            return corpo
+        if resposta.status_code != 200:
+            log.warning("prisma_recusou", status=resposta.status_code)
+            return corpo
+        return resposta.content
 
     async def _segurar(self) -> Response:
         """Pacote perdido: a conexão fica pendurada; o distribuidor só descobre pelo timeout."""

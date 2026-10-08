@@ -24,7 +24,7 @@ def _hmac(chave: str, mensagem: str) -> str:
 
 
 def checksum_verifica(pacote: dict) -> bool:
-    corpo = {k: v for k, v in pacote.items() if k not in ("checksum", "assinatura")}
+    corpo = {k: v for k, v in pacote.items() if k not in ("checksum", "assinatura", "transformacao")}
     return hmac.compare_digest(sha256_hex(canonico(corpo)), pacote["checksum"])
 
 
@@ -35,6 +35,32 @@ def assinatura_pacote_verifica(pacote: dict, chave: str) -> bool:
 def assinatura_manifesto_verifica(manifesto: dict, chave: str) -> bool:
     corpo = {k: v for k, v in manifesto.items() if k != "assinatura"}
     return hmac.compare_digest(_hmac(chave, sha256_hex(canonico(corpo))), manifesto["assinatura"])
+
+
+def problema_na_transformacao(pacote: dict, chave_prisma: str) -> str | None:
+    """Verifica a reclassificação do Prisma; devolve o motivo da recusa ou None se estiver íntegra.
+
+    Uma reclassificação válida só move registros de outros itens para o item alvo:
+    total, vazios e inválidos ficam iguais e nenhum item perde mais do que tinha.
+    """
+    bloco = pacote["transformacao"]
+    corpo = {k: v for k, v in bloco.items() if k != "assinatura"}
+    if not hmac.compare_digest(_hmac(chave_prisma, sha256_hex(canonico(corpo))), bloco["assinatura"]):
+        return "assinatura do Prisma inválida"
+    if bloco["pacote_id"] != pacote["id"] or bloco["checksum_original"] != pacote["checksum"]:
+        return "transformação de outro pacote"
+    original, efetivo = pacote["contagens"], bloco["contagens"]
+    alvo = bloco["item_alvo"] - 1
+    if len(efetivo["itens"]) != len(original["itens"]) or not 0 <= alvo < len(original["itens"]):
+        return "itens incompatíveis"
+    if efetivo["vazios"] != original["vazios"] or efetivo["invalidos"] != original["invalidos"]:
+        return "vazios ou inválidos alterados"
+    if total(efetivo) != total(original):
+        return "total alterado"
+    for i, (antes, depois) in enumerate(zip(original["itens"], efetivo["itens"])):
+        if (i == alvo and depois < antes) or (i != alvo and depois > antes):
+            return "movimento fora do item alvo"
+    return None
 
 
 def hash_extrato(operacao_id: str, unidade_id: int, lotes: list[Contagens]) -> str:

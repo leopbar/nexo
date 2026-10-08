@@ -23,7 +23,7 @@ async def ciclo_de_vida(app: FastAPI):
     if config.DATABASE_URL.startswith("sqlite"):
         async with engine.begin() as conexao:
             await conexao.run_sync(Base.metadata.create_all)
-    sistema = SistemaConsolidacao(async_sessionmaker(engine, expire_on_commit=False))
+    sistema = SistemaConsolidacao(async_sessionmaker(engine, expire_on_commit=False), config.PRISMA_CHAVE)
     await sistema.limpar_banco()
     app.state.sistema = sistema
     yield
