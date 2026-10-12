@@ -1,3 +1,4 @@
+import { idiomaAtual, NOMES_ITENS_EN, NOMES_ITENS_PT } from './idioma'
 import { NOMES_CIDADES } from './topologia'
 
 /** Parâmetros editáveis antes de iniciar a operação. Percentuais em 0–100. */
@@ -32,16 +33,7 @@ export interface ConfigOperacao {
   loteAgentes: number
 }
 
-export const NOMES_ITENS = [
-  'Telemetria',
-  'Inventário',
-  'Logística',
-  'Manutenção',
-  'Qualidade',
-  'Suprimentos',
-  'Atendimento',
-  'Faturamento',
-]
+export const NOMES_ITENS = NOMES_ITENS_PT
 
 export const CONFIG_PADRAO: ConfigOperacao = {
   numUnidades: 10,
@@ -77,7 +69,7 @@ export const CONFIG_PADRAO: ConfigOperacao = {
 /** Ajusta listas de nomes ao número de unidades/itens. */
 export function normalizarConfig(c: ConfigOperacao): ConfigOperacao {
   const nomesUnidades = Array.from({ length: c.numUnidades }, (_, i) => c.nomesUnidades[i] ?? NOMES_CIDADES[i % NOMES_CIDADES.length])
-  const nomesItens = Array.from({ length: c.numItens }, (_, i) => c.nomesItens[i] ?? NOMES_ITENS[i] ?? `Item ${i + 1}`)
+  const nomesItens = Array.from({ length: c.numItens }, (_, i) => c.nomesItens[i] ?? (idiomaAtual() === 'en' ? NOMES_ITENS_EN : NOMES_ITENS)[i] ?? `Item ${i + 1}`)
   const descricoesItens = Array.from({ length: c.numItens }, (_, i) => c.descricoesItens?.[i] ?? '')
   return { ...c, nomesUnidades, nomesItens, descricoesItens }
 }

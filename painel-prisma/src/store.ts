@@ -1,6 +1,8 @@
+import { useMemo } from 'react'
 import { create } from 'zustand'
 
 import { chamar, urlEventos } from './lib/api'
+import { nomeItem, useIdioma } from './lib/idioma'
 import type { Ajustes, Catalogo, Estatisticas, Mensagem, Passagem, Retrato } from './lib/tipos'
 
 export interface Aviso {
@@ -86,6 +88,13 @@ export const usePrisma = create<Estado>()((set, get) => ({
     setTimeout(() => set({ avisos: get().avisos.filter((a) => a.id !== id) }), tipo === 'erro' ? 6000 : 3500)
   },
 }))
+
+/** Itens do catálogo como aparecem na tela (nomes padrão no idioma atual). */
+export function useItens(): string[] {
+  const itens = usePrisma((s) => s.catalogo.itens)
+  const idioma = useIdioma((s) => s.idioma)
+  return useMemo(() => itens.map((n) => nomeItem(n, idioma)), [itens, idioma])
+}
 
 /** WebSocket com reconexão automática e leitura periódica do catálogo do Nexo. Retorna a função que desliga tudo. */
 export function conectar(): () => void {

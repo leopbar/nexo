@@ -5,11 +5,13 @@ import { Cabecalho } from './components/Cabecalho'
 import { Configuracoes } from './components/Configuracoes'
 import { ItemAlvo } from './components/ItemAlvo'
 import { Indicadores, Movimento, Rastreabilidade } from './components/Painel'
+import { traduzirMensagem, useIdioma, useT } from './lib/idioma'
 import { cn } from './lib/utils'
-import { conectar, usePrisma } from './store'
+import { conectar, useItens, usePrisma } from './store'
 
 function Avisos() {
   const avisos = usePrisma((s) => s.avisos)
+  useIdioma((s) => s.idioma)
   return (
     <div className="pointer-events-none fixed bottom-4 left-4 z-40 flex w-[min(420px,calc(100vw-2rem))] flex-col gap-2">
       {avisos.map((a) => {
@@ -23,7 +25,7 @@ function Avisos() {
             )}
           >
             <Icone className="mt-0.5 h-3.5 w-3.5 shrink-0" />
-            <span>{a.texto}</span>
+            <span>{traduzirMensagem(a.texto)}</span>
           </div>
         )
       })}
@@ -33,7 +35,8 @@ function Avisos() {
 
 function Estado() {
   const ajustes = usePrisma((s) => s.ajustes)
-  const itens = usePrisma((s) => s.catalogo.itens)
+  const itens = useItens()
+  const t = useT()
   const alvo = ajustes.item_alvo ? (itens[ajustes.item_alvo - 1] ?? `Item ${ajustes.item_alvo}`) : null
   return (
     <div
@@ -44,11 +47,19 @@ function Estado() {
     >
       {ajustes.ativo ? (
         <>
-          <b className="font-semibold">Prisma ativo.</b> {ajustes.percentual}% dos registros dos demais itens passam para <b className="font-semibold">{alvo}</b>{' '}
-          {ajustes.escopo === 'todas' ? 'em todas as tubulações.' : ajustes.unidades.length ? `em ${ajustes.unidades.length} unidade(s) selecionada(s).` : 'mas nenhuma unidade está marcada.'}
+          <b className="font-semibold">{t('Prisma ativo.', 'Prisma active.')}</b> {ajustes.percentual}%{' '}
+          {t('dos registros dos demais itens passam para', 'of the records of the other items move to')} <b className="font-semibold">{alvo}</b>{' '}
+          {ajustes.escopo === 'todas'
+            ? t('em todas as tubulações.', 'in all pipelines.')
+            : ajustes.unidades.length
+              ? t(`em ${ajustes.unidades.length} unidade(s) selecionada(s).`, `in ${ajustes.unidades.length} selected unit(s).`)
+              : t('mas nenhuma unidade está marcada.', 'but no unit is selected.')}
         </>
       ) : (
-        <>Prisma desligado: os pacotes passam pela ponte sem alteração.{alvo ? ` Item alvo preparado: ${alvo}.` : ''}</>
+        <>
+          {t('Prisma desligado: os pacotes passam pela ponte sem alteração.', 'Prisma off: packages cross the bridge unchanged.')}
+          {alvo ? t(` Item alvo preparado: ${alvo}.`, ` Target item ready: ${alvo}.`) : ''}
+        </>
       )}
     </div>
   )

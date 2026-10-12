@@ -1,6 +1,8 @@
+import { useMemo } from 'react'
 import { create } from 'zustand'
 import { persist } from 'zustand/middleware'
 
+import { nomeItem, useIdioma } from '../lib/idioma'
 import { CONFIG_PADRAO, normalizarConfig, seedNumerica, type ConfigOperacao } from '../lib/config'
 import { relogio } from '../lib/relogio'
 import { sementeAleatoria } from '../lib/rng'
@@ -295,12 +297,12 @@ export const useOperacao = create<Estado>()(
 
 export type FaseGeral = 'configuracao' | 'coleta' | 'fechamento' | 'consolidacao' | 'consolidacao_final'
 
-export const FASES: { id: FaseGeral; rotulo: string }[] = [
-  { id: 'configuracao', rotulo: 'Configuração' },
-  { id: 'coleta', rotulo: 'Coleta' },
-  { id: 'fechamento', rotulo: 'Fechamento' },
-  { id: 'consolidacao', rotulo: 'Distribuição e consolidação' },
-  { id: 'consolidacao_final', rotulo: 'Consolidação final' },
+export const FASES: { id: FaseGeral; rotulo: string; en: string }[] = [
+  { id: 'configuracao', rotulo: 'Configuração', en: 'Configuration' },
+  { id: 'coleta', rotulo: 'Coleta', en: 'Collection' },
+  { id: 'fechamento', rotulo: 'Fechamento', en: 'Closing' },
+  { id: 'consolidacao', rotulo: 'Distribuição e consolidação', en: 'Distribution and consolidation' },
+  { id: 'consolidacao_final', rotulo: 'Consolidação final', en: 'Final consolidation' },
 ]
 
 export function faseGeral(coleta: string, consolidacao: string): FaseGeral {
@@ -320,4 +322,11 @@ export function useFaseGeral(): FaseGeral {
 /** Participantes ainda na fila depois do fechamento da entrada; null fora dessa situação. */
 export function useFila(): number | null {
   return useOperacao((s) => (s.entradaFechada ? Object.values(s.unidades).reduce((t, f) => t + (f.fila ?? 0), 0) : null))
+}
+
+/** Nomes dos itens da operação como aparecem na tela (nomes padrão no idioma atual). */
+export function useNomesItens(): string[] {
+  const nomes = useOperacao((s) => s.config.nomesItens)
+  const idioma = useIdioma((s) => s.idioma)
+  return useMemo(() => nomes.map((n) => nomeItem(n, idioma)), [nomes, idioma])
 }

@@ -1,24 +1,26 @@
 import { Check } from 'lucide-react'
 
 import { corItem } from '../lib/cores'
+import { useT } from '../lib/idioma'
 import { cn } from '../lib/utils'
-import { usePrisma } from '../store'
+import { useItens, usePrisma } from '../store'
 import { Card, CardContent, CardHeader, CardTitle } from './ui/card'
 
 export function ItemAlvo() {
-  const itens = usePrisma((s) => s.catalogo.itens)
+  const itens = useItens()
   const alvo = usePrisma((s) => s.ajustes.item_alvo)
   const ativo = usePrisma((s) => s.ajustes.ativo)
   const salvar = usePrisma((s) => s.salvar)
+  const t = useT()
 
   return (
     <Card>
       <CardHeader>
-        <CardTitle>Item alvo</CardTitle>
-        <span className="text-[10px] text-zinc-600">{ativo ? 'a troca vale na hora' : 'escolha e ative'}</span>
+        <CardTitle>{t('Item alvo', 'Target item')}</CardTitle>
+        <span className="text-[10px] text-zinc-600">{ativo ? t('a troca vale na hora', 'changes apply immediately') : t('escolha e ative', 'choose and activate')}</span>
       </CardHeader>
       <CardContent className="flex flex-col gap-1">
-        {itens.length === 0 && <p className="text-xs text-zinc-500">Aguardando uma operação configurada no Nexo para listar os itens.</p>}
+        {itens.length === 0 && <p className="text-xs text-zinc-500">{t('Aguardando uma operação configurada no Nexo para listar os itens.', 'Waiting for an operation configured in Nexo to list the items.')}</p>}
         {itens.map((nome, i) => {
           const selecionado = alvo === i + 1
           return (
@@ -37,7 +39,7 @@ export function ItemAlvo() {
             </button>
           )
         })}
-        {alvo !== null && itens.length > 0 && alvo > itens.length && <p className="mt-1 text-[11px] text-amber-300">O item {alvo} não existe nesta operação; escolha outro.</p>}
+        {alvo !== null && itens.length > 0 && alvo > itens.length && <p className="mt-1 text-[11px] text-amber-300">{t(`O item ${alvo} não existe nesta operação; escolha outro.`, `Item ${alvo} does not exist in this operation; choose another.`)}</p>}
       </CardContent>
     </Card>
   )

@@ -1,19 +1,30 @@
 import { clsx, type ClassValue } from 'clsx'
 import { twMerge } from 'tailwind-merge'
 
+import { locale } from './idioma'
+
 export function cn(...entradas: ClassValue[]) {
   return twMerge(clsx(entradas))
 }
 
-const inteiro = new Intl.NumberFormat('pt-BR')
-const percentual = new Intl.NumberFormat('pt-BR', { style: 'percent', minimumFractionDigits: 1, maximumFractionDigits: 1 })
+const formatos = new Map<string, { inteiro: Intl.NumberFormat; percentual: Intl.NumberFormat }>()
+
+function formato() {
+  const l = locale()
+  let f = formatos.get(l)
+  if (!f) {
+    f = { inteiro: new Intl.NumberFormat(l), percentual: new Intl.NumberFormat(l, { style: 'percent', minimumFractionDigits: 1, maximumFractionDigits: 1 }) }
+    formatos.set(l, f)
+  }
+  return f
+}
 
 export function num(v: number): string {
-  return inteiro.format(Math.round(v))
+  return formato().inteiro.format(Math.round(v))
 }
 
 export function pct(v: number): string {
-  return percentual.format(Number.isFinite(v) ? v : 0)
+  return formato().percentual.format(Number.isFinite(v) ? v : 0)
 }
 
 export function tempo(segundos: number): string {

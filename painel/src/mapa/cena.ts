@@ -11,6 +11,7 @@ import { Application, Container, Graphics, Sprite, Text, Texture } from 'pixi.js
 
 import { barramento } from '../lib/barramento'
 import { COR_ACK, COR_DUPLICADO, COR_NACK, COR_RECUSADO, corClasse, corItem, hexParaNumero } from '../lib/cores'
+import { nomeTerritorio } from '../lib/idioma'
 import { relogio } from '../lib/relogio'
 import type { Mensagem } from '../lib/tipos'
 import { pontoNoTubo, type UnidadeTopo, type Ponto, type Topologia } from '../lib/topologia'
@@ -236,8 +237,13 @@ export class CenaMapa {
       this.nomeTerritorio.alpha = 0.55
       this.mundo.addChildAt(this.nomeTerritorio, 1)
     }
-    this.nomeTerritorio.text = topo.nomeTerritorio.toUpperCase()
+    this.atualizarTextos()
     this.nomeTerritorio.position.set(28, 18)
+  }
+
+  /** Reescreve os textos desenhados no mapa no idioma atual. */
+  atualizarTextos() {
+    if (this.topo && this.nomeTerritorio) this.nomeTerritorio.text = nomeTerritorio(this.topo.nomeTerritorio).toUpperCase()
   }
 
   private limparAnimacoes() {

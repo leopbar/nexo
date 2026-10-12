@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
 
+import { useT } from '../lib/idioma'
 import type { Escopo } from '../lib/tipos'
 import { cn } from '../lib/utils'
 import { usePrisma } from '../store'
@@ -10,6 +11,7 @@ function Percentual() {
   const salvo = usePrisma((s) => s.ajustes.percentual)
   const salvar = usePrisma((s) => s.salvar)
   const [valor, setValor] = useState(salvo)
+  const t = useT()
 
   useEffect(() => setValor(salvo), [salvo])
   useEffect(() => {
@@ -21,11 +23,11 @@ function Percentual() {
   return (
     <div className="flex flex-col gap-2">
       <div className="flex items-center justify-between text-[11px] text-zinc-500">
-        <span>Percentual reclassificado</span>
+        <span>{t('Percentual reclassificado', 'Reclassified percentage')}</span>
         <span className="font-mono text-cyan-300 tabular-nums">{valor}%</span>
       </div>
       <div className="flex items-center gap-3">
-        <input type="range" min={1} max={100} value={valor} onChange={(e) => setValor(Number(e.target.value))} className="flex-1 accent-cyan-400" aria-label="Percentual reclassificado" />
+        <input type="range" min={1} max={100} value={valor} onChange={(e) => setValor(Number(e.target.value))} className="flex-1 accent-cyan-400" aria-label={t('Percentual reclassificado', 'Reclassified percentage')} />
         <Input
           type="number"
           min={1}
@@ -38,14 +40,16 @@ function Percentual() {
           className="w-16"
         />
       </div>
-      <p className="text-[11px] text-zinc-600">Dos registros de cada item diferente do alvo, esta fração passa para o alvo.</p>
+      <p className="text-[11px] text-zinc-600">
+        {t('Dos registros de cada item diferente do alvo, esta fração passa para o alvo.', 'Of the records of each item other than the target, this fraction moves to the target.')}
+      </p>
     </div>
   )
 }
 
-const ESCOPOS: { id: Escopo; rotulo: string }[] = [
-  { id: 'todas', rotulo: 'Todas as tubulações' },
-  { id: 'selecionadas', rotulo: 'Unidades selecionadas' },
+const ESCOPOS: { id: Escopo; rotulo: string; en: string }[] = [
+  { id: 'todas', rotulo: 'Todas as tubulações', en: 'All pipelines' },
+  { id: 'selecionadas', rotulo: 'Unidades selecionadas', en: 'Selected units' },
 ]
 
 function Granularidade() {
@@ -53,10 +57,11 @@ function Granularidade() {
   const selecionadas = usePrisma((s) => s.ajustes.unidades)
   const unidades = usePrisma((s) => s.catalogo.unidades)
   const salvar = usePrisma((s) => s.salvar)
+  const t = useT()
 
   return (
     <div className="flex flex-col gap-2">
-      <span className="text-[11px] text-zinc-500">Granularidade</span>
+      <span className="text-[11px] text-zinc-500">{t('Granularidade', 'Granularity')}</span>
       <div className="grid grid-cols-2 gap-1 rounded-lg border border-zinc-800 bg-zinc-950 p-1">
         {ESCOPOS.map((o) => (
           <button
@@ -64,14 +69,14 @@ function Granularidade() {
             onClick={() => salvar({ escopo: o.id })}
             className={cn('rounded-md py-1.5 text-xs transition-colors cursor-pointer', escopo === o.id ? 'bg-zinc-800 text-zinc-100' : 'text-zinc-500 hover:text-zinc-300')}
           >
-            {o.rotulo}
+            {t(o.rotulo, o.en)}
           </button>
         ))}
       </div>
       {escopo === 'selecionadas' && (
         <div className="flex flex-wrap gap-1.5">
-          {unidades.length === 0 && <span className="text-[11px] text-zinc-600">Nenhuma unidade na operação atual.</span>}
-          {unidades.length > 0 && selecionadas.length === 0 && <span className="w-full text-[11px] text-amber-300">Nenhuma unidade marcada: nada será reclassificado.</span>}
+          {unidades.length === 0 && <span className="text-[11px] text-zinc-600">{t('Nenhuma unidade na operação atual.', 'No unit in the current operation.')}</span>}
+          {unidades.length > 0 && selecionadas.length === 0 && <span className="w-full text-[11px] text-amber-300">{t('Nenhuma unidade marcada: nada será reclassificado.', 'No unit selected: nothing will be reclassified.')}</span>}
           {unidades.map((u) => {
             const marcada = selecionadas.includes(u.id)
             return (
@@ -94,17 +99,20 @@ function Granularidade() {
 }
 
 export function Configuracoes() {
+  const t = useT()
   return (
     <Card>
       <CardHeader>
-        <CardTitle>Configurações</CardTitle>
+        <CardTitle>{t('Configurações', 'Settings')}</CardTitle>
       </CardHeader>
       <CardContent className="flex flex-col gap-5">
         <Percentual />
         <Granularidade />
         <p className="rounded-lg border border-zinc-900 bg-black px-3 py-2 text-[11px] leading-relaxed text-zinc-500">
-          Vazios e inválidos passam sempre intactos, e o total de cada pacote não muda. O pacote reclassificado leva a assinatura do Prisma e segue com o original da
-          unidade, para a central conferir os dois.
+          {t(
+            'Vazios e inválidos passam sempre intactos, e o total de cada pacote não muda. O pacote reclassificado leva a assinatura do Prisma e segue com o original da unidade, para a central conferir os dois.',
+            "Empty and invalid records always pass intact, and each package's total does not change. The reclassified package carries the Prisma signature and travels with the unit's original, so the central can check both.",
+          )}
         </p>
       </CardContent>
     </Card>

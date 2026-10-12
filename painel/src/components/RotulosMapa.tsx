@@ -4,6 +4,7 @@ import { AnimatePresence, motion } from 'motion/react'
 import { COR_VAZIO, COR_INVALIDO, corItem } from '../lib/cores'
 import type { UnidadeConsolidacao, AndamentoUnidade } from '../lib/tipos'
 import { pontoNoTubo, type UnidadeTopo } from '../lib/topologia'
+import { useT } from '../lib/idioma'
 import { cn, num, pct } from '../lib/utils'
 import { useOperacao, useFaseGeral, type Viewport } from '../store/operacao'
 
@@ -26,33 +27,34 @@ function BarraClasses({ andamento }: { andamento: AndamentoUnidade }) {
 }
 
 function StatusDistribuicao({ andamento, consolidacao, online }: { andamento: AndamentoUnidade; consolidacao?: UnidadeConsolidacao; online: boolean }) {
+  const t = useT()
   if (!online)
     return (
       <span className="flex items-center gap-1 text-red-400">
-        <WifiOff className="h-3 w-3" /> link caiu
+        <WifiOff className="h-3 w-3" /> {t('link caiu', 'link down')}
       </span>
     )
   if (consolidacao?.status === 'validada')
     return (
       <span className="flex items-center gap-1 text-emerald-400">
-        <CheckCircle2 className="h-3 w-3" /> validada
+        <CheckCircle2 className="h-3 w-3" /> {t('validada', 'validated')}
       </span>
     )
   if (andamento.distribuicao === 'falha' || consolidacao?.status === 'falha')
     return (
       <span className="flex items-center gap-1 text-red-400">
-        <XCircle className="h-3 w-3" /> falha
+        <XCircle className="h-3 w-3" /> {t('falha', 'failed')}
       </span>
     )
   if (andamento.distribuicao === 'aguardando')
     return (
       <span className="flex items-center gap-1 text-zinc-500">
-        <Lock className="h-3 w-3" /> terminal travado
+        <Lock className="h-3 w-3" /> {t('terminal travado', 'terminal locked')}
       </span>
     )
   return (
     <span className="flex items-center gap-1 text-zinc-300">
-      <Clock className="h-3 w-3" /> {andamento.pacotes_confirmados}/{andamento.pacotes_total} pacotes
+      <Clock className="h-3 w-3" /> {andamento.pacotes_confirmados}/{andamento.pacotes_total} {t('pacotes', 'packages')}
     </span>
   )
 }
@@ -62,6 +64,7 @@ function CartaoUnidade({ f, v }: { f: UnidadeTopo; v: Viewport }) {
   const consolidacao = useOperacao((s) => s.unidadesConsolidacao[f.id])
   const online = useOperacao((s) => s.links[f.id]?.online ?? true)
   const fase = useFaseGeral()
+  const t = useT()
   const pos = tela(v, f.pos.x, f.pos.y)
   const esquerda = f.lado === 'esquerda'
   const largura = 150
@@ -85,7 +88,9 @@ function CartaoUnidade({ f, v }: { f: UnidadeTopo; v: Viewport }) {
               <motion.span key={andamento.total} initial={{ opacity: 0.5 }} animate={{ opacity: 1 }} className="font-mono text-sm text-zinc-50 tabular-nums">
                 {num(andamento.total)}
               </motion.span>
-              <span className="text-zinc-500 tabular-nums">de {num(andamento.participantes)}</span>
+              <span className="text-zinc-500 tabular-nums">
+                {t('de', 'of')} {num(andamento.participantes)}
+              </span>
             </div>
             <div className="mt-1">
               <BarraClasses andamento={andamento} />
@@ -98,18 +103,26 @@ function CartaoUnidade({ f, v }: { f: UnidadeTopo; v: Viewport }) {
             </div>
             {fase === 'coleta' && !andamento.aberto && (
               <div className="mt-1.5 text-[10px]">
-                {andamento.fila > 0 ? <span className="text-amber-300 tabular-nums">fila: {num(andamento.fila)} participantes</span> : <span className="text-zinc-500">terminal fechado</span>}
+                {andamento.fila > 0 ? (
+                  <span className="text-amber-300 tabular-nums">
+                    {t('fila', 'queue')}: {num(andamento.fila)} {t('participantes', 'participants')}
+                  </span>
+                ) : (
+                  <span className="text-zinc-500">{t('terminal fechado', 'terminal closed')}</span>
+                )}
               </div>
             )}
             {fase !== 'coleta' && (
               <div className="mt-1.5 flex items-center justify-between text-[10px]">
                 <StatusDistribuicao andamento={andamento} consolidacao={consolidacao} online={online} />
-                {!andamento.aberto && <span className="text-zinc-600 tabular-nums">s/ reg. {num(andamento.ausentes)}</span>}
+                {!andamento.aberto && <span className="text-zinc-600 tabular-nums">
+                    {t('s/ reg.', 'no rec.')} {num(andamento.ausentes)}
+                  </span>}
               </div>
             )}
           </>
         ) : (
-          <div className="mt-1 text-[10px] text-zinc-500">terminal aguardando abertura</div>
+          <div className="mt-1 text-[10px] text-zinc-500">{t('terminal aguardando abertura', 'terminal waiting to open')}</div>
         )}
       </div>
     </div>
@@ -118,6 +131,7 @@ function CartaoUnidade({ f, v }: { f: UnidadeTopo; v: Viewport }) {
 
 function SeloValidada({ f, v }: { f: UnidadeTopo; v: Viewport }) {
   const validada = useOperacao((s) => s.unidadesConsolidacao[f.id]?.status === 'validada')
+  const t = useT()
   const meio = pontoNoTubo(f, 0.32)
   const pos = tela(v, meio.x, meio.y)
   return (
@@ -131,7 +145,7 @@ function SeloValidada({ f, v }: { f: UnidadeTopo; v: Viewport }) {
           className="absolute -translate-x-1/2 -translate-y-1/2 rounded-full border border-emerald-700/70 bg-emerald-950/90 px-1.5 py-0.5 text-[9px] font-medium uppercase tracking-wider text-emerald-300"
           style={pos}
         >
-          ✓ validada
+          ✓ {t('validada', 'validated')}
         </motion.div>
       )}
     </AnimatePresence>
@@ -142,19 +156,20 @@ function SeloCentral({ v }: { v: Viewport }) {
   const topo = useOperacao((s) => s.topologia)
   const fase = useOperacao((s) => s.faseConsolidacao)
   const percentual = useOperacao((s) => s.percentualProcessado)
+  const t = useT()
   const pos = tela(v, topo.central.pos.x, topo.central.pos.y)
   const selo =
     fase === 'habilitada'
-      ? { texto: `recebendo · ${pct(percentual)}`, cls: 'border-emerald-800 bg-emerald-950/90 text-emerald-300' }
+      ? { chave: 'recebendo', texto: `${t('recebendo', 'receiving')} · ${pct(percentual)}`, cls: 'border-emerald-800 bg-emerald-950/90 text-emerald-300' }
       : fase === 'consolidacao_final'
-        ? { texto: 'consolidação concluída', cls: 'border-violet-800 bg-violet-950/90 text-violet-200' }
+        ? { chave: 'concluida', texto: t('consolidação concluída', 'consolidation complete'), cls: 'border-violet-800 bg-violet-950/90 text-violet-200' }
         : fase === 'aguardando' || fase === 'pronta'
-          ? { texto: 'aguardando', cls: 'border-amber-800 bg-amber-950/90 text-amber-300' }
-          : { texto: 'em configuração', cls: 'border-zinc-800 bg-zinc-950/90 text-zinc-400' }
+          ? { chave: 'aguardando', texto: t('aguardando', 'waiting'), cls: 'border-amber-800 bg-amber-950/90 text-amber-300' }
+          : { chave: 'configuracao', texto: t('em configuração', 'configuring'), cls: 'border-zinc-800 bg-zinc-950/90 text-zinc-400' }
   return (
     <div className="absolute flex -translate-x-1/2 flex-col items-center gap-1" style={{ left: pos.left, top: pos.top + 30 * v.escala + 8 }}>
       <span className="text-xs font-semibold tracking-wide text-zinc-100">Central · {topo.central.nome}</span>
-      <motion.span key={selo.texto.split(' ')[0]} initial={{ y: -4, opacity: 0 }} animate={{ y: 0, opacity: 1 }} className={cn('rounded-full border px-2 py-0.5 text-[10px] font-medium uppercase tracking-wider', selo.cls)}>
+      <motion.span key={selo.chave} initial={{ y: -4, opacity: 0 }} animate={{ y: 0, opacity: 1 }} className={cn('rounded-full border px-2 py-0.5 text-[10px] font-medium uppercase tracking-wider', selo.cls)}>
         {selo.texto}
       </motion.span>
     </div>

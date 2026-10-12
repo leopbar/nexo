@@ -1,6 +1,7 @@
 import { AlertTriangle, CheckCircle2, Info } from 'lucide-react'
 import { AnimatePresence, motion } from 'motion/react'
 
+import { traduzirMensagem, useIdioma } from '../lib/idioma'
 import { cn } from '../lib/utils'
 import { useOperacao } from '../store/operacao'
 
@@ -9,6 +10,7 @@ const ICONES = { erro: AlertTriangle, info: Info, sucesso: CheckCircle2 }
 export function Avisos() {
   const avisos = useOperacao((s) => s.avisos)
   const dispensar = useOperacao((s) => s.dispensarAviso)
+  useIdioma((s) => s.idioma)
   return (
     <div className="pointer-events-none fixed bottom-4 left-4 z-40 flex w-[min(420px,calc(100vw-2rem))] flex-col gap-2">
       <AnimatePresence initial={false}>
@@ -28,7 +30,7 @@ export function Avisos() {
               )}
             >
               <Icone className="mt-0.5 h-3.5 w-3.5 shrink-0" />
-              <span>{a.texto}</span>
+              <span>{traduzirMensagem(a.texto)}</span>
             </motion.button>
           )
         })}

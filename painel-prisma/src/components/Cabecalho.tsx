@@ -1,7 +1,9 @@
 import { Power, Triangle, Wifi, WifiOff } from 'lucide-react'
 
+import { useT } from '../lib/idioma'
 import { cn } from '../lib/utils'
 import { usePrisma } from '../store'
+import { BotaoIdioma } from './BotaoIdioma'
 import { Button } from './ui/button'
 
 function Conexao() {
@@ -24,6 +26,7 @@ export function Cabecalho() {
   const salvar = usePrisma((s) => s.salvar)
   const operacaoId = usePrisma((s) => s.operacaoId ?? s.catalogo.operacao_id)
   const semAlvo = !ajustes.ativo && ajustes.item_alvo === null
+  const t = useT()
 
   return (
     <header className="flex h-16 shrink-0 items-center gap-4 border-b border-zinc-900 bg-black/80 px-4 backdrop-blur">
@@ -34,14 +37,19 @@ export function Cabecalho() {
         </div>
         <div className="min-w-0 leading-tight">
           <h1 className="truncate text-sm font-semibold text-zinc-100">
-            Prisma <span className="font-normal text-zinc-500">· reclassificação em trânsito</span>
+            Prisma <span className="font-normal text-zinc-500">· {t('reclassificação em trânsito', 'in-transit reclassification')}</span>
           </h1>
           <Conexao />
         </div>
       </div>
-      {operacaoId && <span className="hidden font-mono text-[11px] text-zinc-600 md:inline">operação {operacaoId.slice(0, 8)}</span>}
-      <Button variant={ajustes.ativo ? 'destructive' : 'accent'} disabled={semAlvo} title={semAlvo ? 'Selecione o item alvo primeiro' : undefined} onClick={() => salvar({ ativo: !ajustes.ativo })}>
-        <Power /> {ajustes.ativo ? 'Desativar Prisma' : 'Ativar Prisma'}
+      {operacaoId && (
+        <span className="hidden font-mono text-[11px] text-zinc-600 md:inline">
+          {t('operação', 'operation')} {operacaoId.slice(0, 8)}
+        </span>
+      )}
+      <BotaoIdioma />
+      <Button variant={ajustes.ativo ? 'destructive' : 'accent'} disabled={semAlvo} title={semAlvo ? t('Selecione o item alvo primeiro', 'Select the target item first') : undefined} onClick={() => salvar({ ativo: !ajustes.ativo })}>
+        <Power /> {ajustes.ativo ? t('Desativar Prisma', 'Deactivate Prisma') : t('Ativar Prisma', 'Activate Prisma')}
       </Button>
     </header>
   )

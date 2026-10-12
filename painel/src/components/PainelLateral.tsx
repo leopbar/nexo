@@ -1,5 +1,6 @@
 import { Building2, Server } from 'lucide-react'
 
+import { useT } from '../lib/idioma'
 import { cn } from '../lib/utils'
 import { useOperacao, useFaseGeral } from '../store/operacao'
 import { PainelConsolidacao } from './PainelConsolidacao'
@@ -10,6 +11,7 @@ export function PainelLateral() {
   const fase = useFaseGeral()
   const aba = useOperacao((s) => s.aba)
   const definirAba = useOperacao((s) => s.definirAba)
+  const t = useT()
 
   if (fase === 'configuracao')
     return (
@@ -19,8 +21,8 @@ export function PainelLateral() {
     )
 
   const abas = [
-    { id: 'coleta' as const, rotulo: 'Unidades · coleta', icone: Building2 },
-    { id: 'consolidacao' as const, rotulo: 'Central · consolidação', icone: Server },
+    { id: 'coleta' as const, rotulo: t('Unidades · coleta', 'Units · collection'), icone: Building2 },
+    { id: 'consolidacao' as const, rotulo: t('Central · consolidação', 'Central · consolidation'), icone: Server },
   ]
   return (
     <aside className="flex min-h-0 flex-col border-l border-zinc-900 bg-black">

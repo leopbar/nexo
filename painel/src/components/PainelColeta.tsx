@@ -1,5 +1,6 @@
 import { Bot, EyeOff, Users } from 'lucide-react'
 
+import { useT } from '../lib/idioma'
 import { cn, num, pct, tempo } from '../lib/utils'
 import { useOperacao, useFila } from '../store/operacao'
 import { modelosProntos, usd } from './PainelAgentes'
@@ -18,19 +19,20 @@ function Indicador({ rotulo, valor, cor }: { rotulo: string; valor: string; cor:
 function CartaoAgentes() {
   const agentes = useOperacao((s) => s.agentes)
   const abrir = useOperacao((s) => s.definirAgentesAberto)
+  const t = useT()
   if (!agentes) return null
   return (
     <Card>
       <CardHeader>
-        <CardTitle>Agentes de IA</CardTitle>
+        <CardTitle>{t('Agentes de IA', 'AI agents')}</CardTitle>
         <Button variant="ghost" size="sm" onClick={() => abrir(true)}>
-          <Bot /> {modelosProntos(agentes).length} modelos ligados
+          <Bot /> {modelosProntos(agentes).length} {t('modelos ligados', 'models on')}
         </Button>
       </CardHeader>
       <CardContent className="grid grid-cols-3 gap-2">
-        <Indicador rotulo="Chamadas" valor={num(agentes.chamadas)} cor="text-zinc-100" />
-        <Indicador rotulo="Falhas" valor={num(agentes.falhas)} cor={agentes.falhas ? 'text-amber-300' : 'text-zinc-500'} />
-        <Indicador rotulo="Gasto" valor={usd(agentes.custo_total)} cor="text-emerald-300" />
+        <Indicador rotulo={t('Chamadas', 'Calls')} valor={num(agentes.chamadas)} cor="text-zinc-100" />
+        <Indicador rotulo={t('Falhas', 'Failures')} valor={num(agentes.falhas)} cor={agentes.falhas ? 'text-amber-300' : 'text-zinc-500'} />
+        <Indicador rotulo={t('Gasto', 'Spent')} valor={usd(agentes.custo_total)} cor="text-emerald-300" />
       </CardContent>
     </Card>
   )
@@ -52,27 +54,37 @@ export function PainelColeta() {
   const emFila = fila === null ? 0 : lista.filter((f) => !f.aberto && f.fila > 0).length
   const cores = new Map(topologia.unidades.map((t) => [t.id, t.cor]))
   const agentesLigados = useOperacao((s) => s.config.agentes)
+  const t = useT()
 
   return (
     <div className="flex flex-col gap-3">
       <div className="flex items-start gap-2 rounded-lg border border-zinc-800 bg-zinc-950 px-3 py-2 text-[11px] text-zinc-400">
         <EyeOff className="mt-0.5 h-3.5 w-3.5 shrink-0 text-zinc-500" />
         <span>
-          Visão do <b className="font-medium text-zinc-200">sistema de coleta</b>: andamento local dos terminais. A central não tem acesso a estes números — só aos extratos
-          distribuídos depois do fechamento.
+          {t('Visão do', 'View of the')} <b className="font-medium text-zinc-200">{t('sistema de coleta', 'collection system')}</b>
+          {t(
+            ': andamento local dos terminais. A central não tem acesso a estes números — só aos extratos distribuídos depois do fechamento.',
+            ': local progress of the terminals. The central has no access to these numbers — only to the statements distributed after closing.',
+          )}
         </span>
       </div>
 
       <Card>
         <CardHeader>
-          <CardTitle>Cobertura</CardTitle>
+          <CardTitle>{t('Cobertura', 'Coverage')}</CardTitle>
           <span
             className={cn(
               'rounded-full px-2 py-0.5 font-mono text-[11px] tabular-nums',
               fase === 'coleta' ? 'bg-violet-500/15 text-violet-300' : 'bg-zinc-800/80 text-zinc-400',
             )}
           >
-            {fila !== null ? 'entrada fechada' : fase === 'coleta' ? `${tempo(segundo)} / ${tempo(duracao)}` : fase === 'configuracao' || fase === 'pronta' ? 'terminais fechados' : 'terminais travados'}
+            {fila !== null
+              ? t('entrada fechada', 'entry closed')
+              : fase === 'coleta'
+                ? `${tempo(segundo)} / ${tempo(duracao)}`
+                : fase === 'configuracao' || fase === 'pronta'
+                  ? t('terminais fechados', 'terminals closed')
+                  : t('terminais travados', 'terminals locked')}
           </span>
         </CardHeader>
         <CardContent className="flex flex-col gap-3">
@@ -80,8 +92,8 @@ export function PainelColeta() {
             <div className="flex items-center gap-2 rounded-lg border border-amber-500/40 bg-amber-950/30 px-3 py-2 text-xs text-amber-300">
               <Users className="h-3.5 w-3.5 shrink-0" />
               <span>
-                Participantes em fila: <b className="font-mono font-semibold tabular-nums">{num(fila)}</b>
-                <span className="text-amber-300/70"> · o tempo acabou, mas quem já estava na fila ainda é atendido</span>
+                {t('Participantes em fila', 'Participants in queue')}: <b className="font-mono font-semibold tabular-nums">{num(fila)}</b>
+                <span className="text-amber-300/70"> · {t('o tempo acabou, mas quem já estava na fila ainda é atendido', 'time is up, but those already in the queue are still served')}</span>
               </span>
             </div>
           )}
@@ -90,11 +102,11 @@ export function PainelColeta() {
               <div className="bg-gradient-to-r from-emerald-300 to-cyan-300 bg-clip-text font-mono text-5xl font-semibold leading-none text-transparent tabular-nums">
                 {pct(taxa)}
               </div>
-              <div className="mt-1 text-[11px] text-zinc-500">dos participantes já registraram</div>
+              <div className="mt-1 text-[11px] text-zinc-500">{t('dos participantes já registraram', 'of participants have recorded')}</div>
             </div>
             <div className="text-right">
               <div className="font-mono text-2xl font-semibold leading-none text-amber-300 tabular-nums">{pct(participantes ? 1 - taxa : 0)}</div>
-              <div className="mt-1 text-[11px] text-zinc-500">sem registro</div>
+              <div className="mt-1 text-[11px] text-zinc-500">{t('sem registro', 'no record')}</div>
             </div>
           </div>
 
@@ -103,14 +115,14 @@ export function PainelColeta() {
           </div>
 
           <div className="grid grid-cols-3 gap-2">
-            <Indicador rotulo="Registros" valor={num(registros)} cor="text-emerald-300" />
-            <Indicador rotulo="Participantes" valor={num(participantes)} cor="text-zinc-100" />
-            <Indicador rotulo="Sem registro" valor={num(participantes - registros)} cor="text-amber-300" />
+            <Indicador rotulo={t('Registros', 'Records')} valor={num(registros)} cor="text-emerald-300" />
+            <Indicador rotulo={t('Participantes', 'Participants')} valor={num(participantes)} cor="text-zinc-100" />
+            <Indicador rotulo={t('Sem registro', 'No record')} valor={num(participantes - registros)} cor="text-amber-300" />
           </div>
 
           <div>
             <div className="mb-1 flex justify-between text-[11px] text-zinc-500">
-              <span>tempo de coleta</span>
+              <span>{t('tempo de coleta', 'collection time')}</span>
               <span className="font-mono text-violet-300 tabular-nums">{pct(progresso)}</span>
             </div>
             <div className="h-1 overflow-hidden rounded-full bg-zinc-900">
@@ -124,15 +136,15 @@ export function PainelColeta() {
 
       <Card>
         <CardHeader>
-          <CardTitle>Terminais</CardTitle>
+          <CardTitle>{t('Terminais', 'Terminals')}</CardTitle>
           <span className="text-[11px] text-zinc-500 tabular-nums">
             {fila !== null ? (
               <>
-                <span className="text-amber-300">{emFila}</span> com fila · {lista.length - emFila} fechados
+                <span className="text-amber-300">{emFila}</span> {t('com fila', 'with queue')} · {lista.length - emFila} {t('fechados', 'closed')}
               </>
             ) : (
               <>
-                <span className="text-emerald-300">{abertos}</span> abertos · {lista.length - abertos} fechados
+                <span className="text-emerald-300">{abertos}</span> {t('abertos', 'open')} · {lista.length - abertos} {t('fechados', 'closed')}
               </>
             )}
           </span>
@@ -150,9 +162,9 @@ export function PainelColeta() {
                   <span className="flex-1 truncate text-xs text-zinc-200">{f.nome}</span>
                   {fila !== null &&
                     (f.fila > 0 ? (
-                      <span className="rounded bg-amber-500/15 px-1.5 font-mono text-[10px] text-amber-300 tabular-nums">fila {num(f.fila)}</span>
+                      <span className="rounded bg-amber-500/15 px-1.5 font-mono text-[10px] text-amber-300 tabular-nums">{t('fila', 'queue')} {num(f.fila)}</span>
                     ) : (
-                      <span className="rounded bg-zinc-800/80 px-1.5 text-[10px] text-zinc-400">fechado</span>
+                      <span className="rounded bg-zinc-800/80 px-1.5 text-[10px] text-zinc-400">{t('fechado', 'closed')}</span>
                     ))}
                   <span className="font-mono text-[11px] text-zinc-500 tabular-nums">
                     {num(f.total)} <span className="text-zinc-600">/ {num(f.participantes)}</span>
@@ -170,7 +182,7 @@ export function PainelColeta() {
               </div>
             )
           })}
-          {lista.length === 0 && <p className="text-xs text-zinc-600">Nenhum terminal configurado.</p>}
+          {lista.length === 0 && <p className="text-xs text-zinc-600">{t('Nenhum terminal configurado.', 'No terminal configured.')}</p>}
         </CardContent>
       </Card>
     </div>

@@ -1,5 +1,6 @@
 import { COR_ACK, COR_VAZIO, COR_DUPLICADO, COR_NACK, COR_INVALIDO, corItem } from '../lib/cores'
-import { useOperacao, useFaseGeral } from '../store/operacao'
+import { useT } from '../lib/idioma'
+import { useFaseGeral, useNomesItens, useOperacao } from '../store/operacao'
 
 function Item({ cor, rotulo, forma = 'ponto' }: { cor: string; rotulo: string; forma?: 'ponto' | 'pacote' | 'contorno' | 'losango' | 'traco' }) {
   return (
@@ -16,8 +17,9 @@ function Item({ cor, rotulo, forma = 'ponto' }: { cor: string; rotulo: string; f
 
 export function Legenda() {
   const fase = useFaseGeral()
-  const nomes = useOperacao((s) => s.config.nomesItens)
+  const nomes = useNomesItens()
   const porPonto = useOperacao((s) => s.config.participantesPorPonto)
+  const t = useT()
   return (
     <div className="pointer-events-none absolute right-3 bottom-3 flex max-w-[60%] flex-wrap justify-end gap-x-3 gap-y-1 rounded-lg border border-zinc-900 bg-black/70 px-3 py-2 text-[10px] text-zinc-400 backdrop-blur">
       {fase === 'coleta' || fase === 'configuracao' ? (
@@ -25,19 +27,19 @@ export function Legenda() {
           {nomes.map((n, i) => (
             <Item key={i} cor={corItem(i)} rotulo={n} />
           ))}
-          <Item cor={COR_VAZIO} rotulo="vazio" />
-          <Item cor={COR_INVALIDO} rotulo="inválido" />
-          <span className="text-zinc-600">· cada ponto = {porPonto} participantes</span>
+          <Item cor={COR_VAZIO} rotulo={t('vazio', 'empty')} />
+          <Item cor={COR_INVALIDO} rotulo={t('inválido', 'invalid')} />
+          <span className="text-zinc-600">· {t(`cada ponto = ${porPonto} participantes`, `each dot = ${porPonto} participants`)}</span>
         </>
       ) : (
         <>
-          <Item cor="#ffffff" rotulo="manifesto" forma="losango" />
-          <Item cor="#60a5fa" rotulo="pacote (cor da unidade)" forma="pacote" />
-          <Item cor="#ffffff" rotulo="reenvio" forma="contorno" />
+          <Item cor="#ffffff" rotulo={t('manifesto', 'manifest')} forma="losango" />
+          <Item cor="#60a5fa" rotulo={t('pacote (cor da unidade)', 'package (unit color)')} forma="pacote" />
+          <Item cor="#ffffff" rotulo={t('reenvio', 'resend')} forma="contorno" />
           <Item cor={COR_ACK} rotulo="ACK" />
-          <Item cor={COR_NACK} rotulo="NACK / perdido" />
-          <Item cor={COR_DUPLICADO} rotulo="duplicado descartado" />
-          <Item cor={COR_NACK} rotulo="link caído" forma="traco" />
+          <Item cor={COR_NACK} rotulo={t('NACK / perdido', 'NACK / lost')} />
+          <Item cor={COR_DUPLICADO} rotulo={t('duplicado descartado', 'duplicate discarded')} />
+          <Item cor={COR_NACK} rotulo={t('link caído', 'link down')} forma="traco" />
         </>
       )}
     </div>

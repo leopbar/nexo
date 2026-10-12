@@ -1,3 +1,4 @@
+import type { Idioma } from './idioma'
 import type { Origem } from './tipos'
 
 export const SERVICOS: Origem[] = ['coleta', 'transporte', 'consolidacao']
@@ -6,6 +7,17 @@ export const NOMES_SERVICOS: Record<Origem, string> = {
   coleta: 'Coleta',
   transporte: 'Transporte',
   consolidacao: 'Consolidação',
+}
+
+const NOMES_SERVICOS_EN: Record<Origem, string> = {
+  coleta: 'Collection',
+  transporte: 'Transport',
+  consolidacao: 'Consolidation',
+}
+
+/** Nome do serviço para exibição, no idioma da tela. */
+export function nomeServico(servico: Origem, idioma: Idioma): string {
+  return (idioma === 'en' ? NOMES_SERVICOS_EN : NOMES_SERVICOS)[servico]
 }
 
 export class ErroServico extends Error {
